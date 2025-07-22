@@ -1,0 +1,15 @@
+.idea/
+*.iml
+*.xml
+
+__pycache__/
+*.pyc
+
+migrations/
+
+__init__.py
+
+.idea/shelf/
+.idea/workspace.xml
+
+*.sqlite3
