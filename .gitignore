@@ -4,4 +4,6 @@
 __pycache__/
 *.pyc
 
-*.xml
+migrations/
+
+__init__.py

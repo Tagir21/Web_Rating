@@ -151,7 +151,7 @@ async def main():
     # await add_user(UserAddSchema(name='Батталов Тагир Вадимович', login='student134235', password='Testik=56'))
     # await add_user(UserAddSchema(name='Акишин Илья Сергеевич', login='student134231', password='Testik=56'))
     # await add_course(CourseAddSchema(course=2, teacher_name='Светлана Сергеевна', course_name='BigData', weight=2))
-    # await add_akademy_grade(AkademyGradeAddSchema(user_id=4, course_id=1, grade=100.000))
+    #await add_akademy_grade(AkademyGradeAddSchema(user_id=1, course_id=1, grade=50.000))
 
     print(await get_all_grades())
 
