@@ -170,7 +170,10 @@ async def add_course(data: CourseAddSchema):
 
 async def get_all_users(): #Только для академика
     async with new_session() as session:
-        query = select(UserModel).options(selectinload(UserModel.akademy_grade), selectinload(UserModel.dean_grade))
+        query = select(UserModel).options(
+            selectinload(UserModel.akademy_grade).joinedload(AkademyGradeModel.course),
+            selectinload(UserModel.dean_grade).joinedload(DeanGradeModel.course)
+        )
         result_sql = await session.execute(query)
 
         users = result_sql.scalars().all()
@@ -180,14 +183,14 @@ async def get_all_users(): #Только для академика
             sum_akademy_grades = 0.0
             sum_dean_grade = 0.0
             for grade in user.akademy_grade:
-                sum_akademy_grades += grade.grade
+                sum_akademy_grades += grade.grade * grade.course.weight
             for grade in user.dean_grade:
-                sum_dean_grade += grade.grade
+                sum_dean_grade += grade.grade * grade.course.weight
 
             result.append({
                 'id': user.id,
                 'user_name': user.name,
-                'grade': sum_akademy_grades+sum_dean_grade
+                'grade': sum_akademy_grades + sum_dean_grade
             })
 
         return result
