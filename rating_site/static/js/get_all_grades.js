@@ -1,19 +1,18 @@
 document.addEventListener("DOMContentLoaded", async () => {
     try {
-        const response = await fetch("http://127.0.0.1:8000/get_all_akademy_grades");
+        const response = await fetch("http://127.0.0.1:8000/get_api_all_users");
         const data = await response.json();
 
         const table_body = document.getElementById('grades_table_body');
 
-        if (data.grades && data.grades.length > 0) { //Пока что только для академика
+        if (data.users && data.users.length > 0) { //Пока что только для академика// Уже нет))
             let html = '';
-            data.grades.forEach((akademy_grade, index) => {
+            data.users.forEach((user, index) => {
                 html += `
                     <tr>
                         <th scope="row">${index + 1}</th>
-                        <td>${akademy_grade.user_id}</td>
-                        <td>${akademy_grade.grade}</td>
-                        <td>${akademy_grade.course_id}</td>
+                        <td>${user.user_name}</td>
+                        <td>${user.grade}</td>
                     </tr>
                 `;
             });
@@ -21,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
             table_body.innerHTML = `
                 <tr>
-                    <td colspan="3" class="text-center">Нет данных о студентах</td>
+                    <td colspan="7" class="text-center">Нет данных о студентах</td>
                 </tr>
             `;
         }
@@ -29,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("Ошибка загрузки:", error);
         document.getElementById("grades_table_body").innerHTML = `
             <tr>
-                <td colspan="3" class="text-center">Ошибка загрузки данных</td>
+                <td colspan="7" class="text-center">Ошибка загрузки данных</td>
             </tr>
         `;
     }

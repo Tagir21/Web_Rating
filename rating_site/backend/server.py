@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from db_conn import get_all_grades
+from db_conn import get_all_users
 
 app = FastAPI()
 
@@ -11,8 +11,8 @@ app.add_middleware(
     allow_methods=["GET"]
 )
 
-@app.get('/get_all_akademy_grades')
-async def get_all_akademy_grades():
-    all_akademy_grades = await get_all_grades()
+@app.get('/get_api_all_users')
+async def get_all_api_users():
+    all_users = await get_all_users()
     print("Я работаю, всё ок")
-    return {'grades': all_akademy_grades}
+    return {'users': all_users}

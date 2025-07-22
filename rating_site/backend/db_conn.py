@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload
 from sqlalchemy import String, Integer, ForeignKey, select
 from pydantic import BaseModel
 from sqlalchemy.sql.expression import text
@@ -31,7 +31,8 @@ class UserModel(Base):
         onupdate = text('UNIX_TIMESTAMP()')
     )
 
-    grade = relationship('AkademyGradeModel', back_populates='user')
+    akademy_grade = relationship('AkademyGradeModel', back_populates='user')
+    dean_grade = relationship('DeanGradeModel', back_populates='user')
 
 class AkademyGradeModel(Base):
     __tablename__ = 'academy_grades'
@@ -39,15 +40,32 @@ class AkademyGradeModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     course_id: Mapped[int] = mapped_column(ForeignKey('courses.id'))
-    grade: Mapped[float]
+    grade: Mapped[float] = mapped_column(default=0.0)
     last_update: Mapped[int] = mapped_column(
         Integer,
         server_default=text('(UNIX_TIMESTAMP())'),
         onupdate=text('(UNIX_TIMESTAMP())')
     )
 
-    user = relationship('UserModel', back_populates='grade')
-    course = relationship('CourseModel', back_populates='grade')
+    user = relationship('UserModel', back_populates='akademy_grade')
+    course = relationship('CourseModel', back_populates='akademy_grade')
+
+class DeanGradeModel(Base):
+    __tablename__ = 'dean_grades'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    course_id: Mapped[int] = mapped_column(ForeignKey('courses.id'))
+    count_of_retake: Mapped[int] = mapped_column(default=0)
+    grade: Mapped[float] = mapped_column(default=0.0)
+    last_update: Mapped[int] = mapped_column(
+        Integer,
+        server_default=text('(UNIX_TIMESTAMP())'),
+        onupdate=text('(UNIX_TIMESTAMP())')
+    )
+
+    user = relationship('UserModel', back_populates='dean_grade')
+    course = relationship('CourseModel', back_populates='dean_grade')
 
 class CourseModel(Base):
     __tablename__ = 'courses'
@@ -63,7 +81,8 @@ class CourseModel(Base):
         onupdate=text('(UNIX_TIMESTAMP())')
     )
 
-    grade = relationship('AkademyGradeModel', back_populates='course')
+    akademy_grade = relationship('AkademyGradeModel', back_populates='course')
+    dean_grade = relationship('DeanGradeModel', back_populates='course')
 
 async def setup_grades():
     async with engine.begin() as conn:
@@ -77,6 +96,12 @@ async def setup_grades():
 class AkademyGradeAddSchema(BaseModel):
     user_id: int
     course_id: int
+    grade: float
+
+class DeanGradeAddSchema(BaseModel):
+    user_id: int
+    course_id: int
+    count_of_retake: int
     grade: float
 
 class UserAddSchema(BaseModel):
@@ -104,6 +129,19 @@ async def add_akademy_grade(data: AkademyGradeAddSchema):
 
         return {'ok': True}
 
+async def add_dean_grade(data: DeanGradeAddSchema):
+    async with new_session() as session:
+        new_grade = DeanGradeModel(
+            user_id = data.user_id,
+            course_id = data.course_id,
+            count_of_retake = data.count_of_retake,
+            grade = data.grade
+        )
+
+        session.add(new_grade)
+        await session.commit()
+
+        return {'ok': True}
 async def add_user(data: UserAddSchema):
     async with new_session() as session:
         new_user = UserModel(
@@ -130,30 +168,42 @@ async def add_course(data: CourseAddSchema):
 
         return {'ok': True}
 
-async def get_all_grades(): #Только для академика
+async def get_all_users(): #Только для академика
     async with new_session() as session:
-        query = select(AkademyGradeModel)
+        query = select(UserModel).options(selectinload(UserModel.akademy_grade), selectinload(UserModel.dean_grade))
         result_sql = await session.execute(query)
 
-        result = [{
-            'id': grade.id,
-            'user_id': grade.user_id,
-            'course_id': grade.course_id,
-            'grade': grade.grade,
-            'last_update': grade.last_update
-        } for grade in result_sql.scalars().all()]
+        users = result_sql.scalars().all()
+        result = []
+
+        for user in users:
+            sum_akademy_grades = 0.0
+            sum_dean_grade = 0.0
+            for grade in user.akademy_grade:
+                sum_akademy_grades += grade.grade
+            for grade in user.dean_grade:
+                sum_dean_grade += grade.grade
+
+            result.append({
+                'id': user.id,
+                'user_name': user.name,
+                'grade': sum_akademy_grades+sum_dean_grade
+            })
 
         return result
 
 async def main():
-    await create_database()
+    # await create_database()
     await setup_grades()
     # await add_user(UserAddSchema(name='Батталов Тагир Вадимович', login='student134235', password='Testik=56'))
     # await add_user(UserAddSchema(name='Акишин Илья Сергеевич', login='student134231', password='Testik=56'))
     # await add_course(CourseAddSchema(course=2, teacher_name='Светлана Сергеевна', course_name='BigData', weight=2))
-    #await add_akademy_grade(AkademyGradeAddSchema(user_id=1, course_id=1, grade=50.000))
+    # await add_akademy_grade(AkademyGradeAddSchema(user_id=1, course_id=1, grade=50.000))
+    # await add_akademy_grade(AkademyGradeAddSchema(user_id=2, course_id=1, grade=74.000))
+    # await add_akademy_grade(AkademyGradeAddSchema(user_id=2, course_id=1, grade=34.540))
+    # await add_dean_grade(DeanGradeAddSchema(user_id=1, course_id=1, count_of_retake=4, grade=11.11))
 
-    print(await get_all_grades())
+    print(await get_all_users())
 
 if __name__ == '__main__':
     try:
