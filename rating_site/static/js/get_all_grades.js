@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
     try {
-        const response = await fetch("localhost:8000/___");
+        const response = await fetch("localhost:8000/get_all_akademy_grades");
         const data = await response.json();
 
         const table_body = document.getElementById('grades_table_body');
