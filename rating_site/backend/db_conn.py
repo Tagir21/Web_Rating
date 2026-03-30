@@ -9,7 +9,8 @@ from db_create import create_database
 
 import asyncio
 
-engine = create_async_engine('mysql+asyncmy://root:Astana2008.@localhost/grades_db')
+#For local bd
+engine = create_async_engine('mysql+asyncmy://root:1234@localhost/grades_db')
 
 new_session = async_sessionmaker(engine, expire_on_commit=False)
 
@@ -196,7 +197,7 @@ async def get_all_users(): #Только для академика
         return result
 
 async def main():
-    # await create_database()
+    await create_database()
     await setup_grades()
     # await add_user(UserAddSchema(name='Батталов Тагир Вадимович', login='student134235', password='Testik=56'))
     # await add_user(UserAddSchema(name='Акишин Илья Сергеевич', login='student134231', password='Testik=56'))

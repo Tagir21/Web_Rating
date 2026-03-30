@@ -1,3 +1,5 @@
+# make only for windows
+
 DJANGO_DIR = D:\practice\Web_Rating\rating_site
 SERVER_DIR = D:\practice\Web_Rating\rating_site\backend
 
