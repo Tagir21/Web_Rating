@@ -6,10 +6,15 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, FSInputFile
+
+import os
+import uuid
 
 from dotenv import dotenv_values
 import asyncio
+
+from bd_conn import add_bd_achievement, AchievementAddSchema
 
 from admin import admin_r as admin_router
 
@@ -19,6 +24,16 @@ admin_id = dotenv_values('.env')['ADMIN_ID']
 
 menu = Router()
 add_achievement = Router()
+
+async def save_file_to_disk(bot, file_id):
+    file = await bot.get_file(file_id)
+    ext = file.file_path.split('.')[-1] if '.' in file.file_path else 'bin'
+    filename = f'{uuid.uuid4()}.{ext}'
+    file_path = os.path.join('../../data', filename)
+
+    print(file_path)
+    await bot.download_file(file.file_path, destination=file_path)
+    return file_path
 
 class item_selection(StatesGroup):
     choosing = State()
@@ -103,7 +118,7 @@ async def done_handler(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 @add_achievement.message(item_selection.waiting_for_file, F.photo | F.document)
-async def file_handler(message: Message, state: FSMContext):
+async def file_handler(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     items = data.get('items', [])
 
@@ -114,24 +129,22 @@ async def file_handler(message: Message, state: FSMContext):
         file_id = message.document.file_id
         file_type = 'document'
 
+    file_path = await save_file_to_disk(bot, file_id)
     await state.update_data(file_id = file_id, file_type = file_type)
 
-    #Добавить отправку админу о новом достижении
-    # if admin_id:
-    #     user = message.from_user
-    #     await message.bot.send_message(
-    #         admin_id,
-    #         f'Новое достижение от {user.full_name} (ID: {user.id})'
-    #         f'Категории: {', '.join(items)}'
-    #     )
-    #
-    #     if file_type == 'photo':
-    #         await message.bot.send_photo(admin_id, file_id)
-    #     else:
-    #         await message.bot.send_document(admin_id, file_id)
+    user_name = message.from_user.username
+    status = 'viewing'
 
+    await add_bd_achievement(AchievementAddSchema(
+        user_name=user_name,
+        status=status,
+        categories=', '.join(items),
+        file_path=file_path,
+        file_type=file_type
+    ))
     await message.answer('Достижение отправлено на проверку')
     await state.clear()
+
 
 @add_achievement.message(item_selection.waiting_for_file)
 async def invalid_file_handler(message: Message):
