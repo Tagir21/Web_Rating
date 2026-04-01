@@ -6,19 +6,23 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 
 from dotenv import dotenv_values
 import asyncio
 
+from admin import admin_r as admin_router
+
 # Получение токена бота из переменной окружения .env
 token = dotenv_values('.env')['BOT_TOKEN']
+admin_id = dotenv_values('.env')['ADMIN_ID']
 
 menu = Router()
 add_achievement = Router()
 
 class item_selection(StatesGroup):
     choosing = State()
+    waiting_for_file = State()
 
 @menu.message(Command('start', 'register'))
 async def command_start_handler(message: Message):
@@ -46,8 +50,10 @@ async def add_button(message: Message, state: FSMContext):
     builder.button(text='Готово', callback_data='done')
     builder.adjust(2)
 
+    await message.answer('Выберите вид своего достижения (можно несколько если не уверены)',
+                         reply_markup=ReplyKeyboardRemove())
+
     await message.answer(
-        'Выберите вид своего достижения (можно несколько, если не уверены)\n'
         'Текущий список: пусто',
         reply_markup=builder.as_markup(resize_keyboard=True)
     )
@@ -68,8 +74,7 @@ async def add_item(callback: CallbackQuery, state: FSMContext ):
 
 
         current_list = ', '.join(items) if items else 'пусто'
-        text = 'Выберите вид своего достижения (можно несколько, если не уверены)\n'\
-               f'Текущий список: {current_list}'
+        text = f'Текущий список: {current_list}'
 
     builder = InlineKeyboardBuilder()
     builder.button(text='Учебная активность', callback_data='Учебная активность')
@@ -91,10 +96,46 @@ async def done_handler(callback: CallbackQuery, state: FSMContext):
         await callback.answer(text='Вы ничего не выбрали', show_alert=True)
         return
 
-    await callback.message.edit_text(text='Ура')
+    await state.set_state(item_selection.waiting_for_file)
+    text = ', '.join(items)
+    await callback.message.edit_text(text=f'Вы выбрали: {html.bold(text)}\n\n'
+                                          f'Теперь отправьте файл или фотографию, подтверждающую ваше достижение')
     await callback.answer()
 
+@add_achievement.message(item_selection.waiting_for_file, F.photo | F.document)
+async def file_handler(message: Message, state: FSMContext):
+    data = await state.get_data()
+    items = data.get('items', [])
+
+    if message.photo:
+        file_id = message.photo[-1].file_id
+        file_type = 'photo'
+    else:
+        file_id = message.document.file_id
+        file_type = 'document'
+
+    await state.update_data(file_id = file_id, file_type = file_type)
+
+    #Добавить отправку админу о новом достижении
+    # if admin_id:
+    #     user = message.from_user
+    #     await message.bot.send_message(
+    #         admin_id,
+    #         f'Новое достижение от {user.full_name} (ID: {user.id})'
+    #         f'Категории: {', '.join(items)}'
+    #     )
+    #
+    #     if file_type == 'photo':
+    #         await message.bot.send_photo(admin_id, file_id)
+    #     else:
+    #         await message.bot.send_document(admin_id, file_id)
+
+    await message.answer('Достижение отправлено на проверку')
     await state.clear()
+
+@add_achievement.message(item_selection.waiting_for_file)
+async def invalid_file_handler(message: Message):
+    await message.answer('Пожалуйста отправьте фото или файл')
 
 async def main():
     #Настройка прокси сервера для корректной работы с телеграммом
@@ -106,6 +147,7 @@ async def main():
     dp = Dispatcher()
     dp.include_router(menu)
     dp.include_router(add_achievement)
+    dp.include_router(admin_router)
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
