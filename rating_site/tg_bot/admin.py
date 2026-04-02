@@ -59,7 +59,9 @@ def get_all_viewing_requests():
                    password='1234',
                    database='grades_db')
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM achievements WHERE status = "viewing"')
+    cursor.execute('SELECT id, (SELECT tg_name FROM telegram_data WHERE telegram_data.id = user_tg_id),'
+                   ' categories, file_path, file_type'
+                   ' FROM achievements WHERE status = "viewing"')
     all_viewing_requests = cursor.fetchall()
     conn.close()
 
@@ -118,9 +120,9 @@ async def send_request(callback: CallbackQuery, state: FSMContext):
 
     request_id = request[0]
     user_name = request[1]
-    categories = request[3]
-    file_path = request[4]
-    file_type = request[5]
+    categories = request[2]
+    file_path = request[3]
+    file_type = request[4]
 
     caption = (f'Достижение от: @{html.bold(user_name)}\n\n'
                f'{html.bold(categories)}')

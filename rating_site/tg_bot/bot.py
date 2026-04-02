@@ -14,7 +14,7 @@ from mysql.connector import connect
 from dotenv import dotenv_values
 import asyncio
 
-from db_conn import add_bd_achievement, AchievementAddSchema
+from db_init import add_bd_achievement, AchievementAddSchema
 
 from admin import admin_r as admin_router
 
@@ -219,7 +219,7 @@ async def file_handler(message: Message, state: FSMContext, bot: Bot):
 
     user_name = message.from_user.username
     status = 'viewing'
-
+    print(tg_id_from_db)
     await add_bd_achievement(AchievementAddSchema(
         user_tg_id=tg_id_from_db,
         status=status,

@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload, configure_mappers
 from sqlalchemy import String, Integer, ForeignKey, select
 from pydantic import BaseModel
 from sqlalchemy.sql.expression import text
@@ -34,7 +34,7 @@ class UserModel(Base):
 
     akademy_grade = relationship('AkademyGradeModel', back_populates='user')
     dean_grade = relationship('DeanGradeModel', back_populates='user')
-    user_tg = relationship('UserTg', back_populates='user')
+    user_tg = relationship('UserTg')
 
 class AkademyGradeModel(Base):
     __tablename__ = 'academy_grades'
@@ -110,7 +110,7 @@ class UserTg(Base):
     is_banned: Mapped[bool] = mapped_column(default=False, server_default=text('false'))
     tg_name: Mapped[str] = mapped_column(String(255))
 
-    user = relationship('UserModel', back_populates='user_tg')
+    # user = relationship('UserModel', back_populates='user_tg')
     achievement = relationship('Achievement', back_populates='user_tg')
 
 async def setup_grades():
@@ -266,6 +266,7 @@ async def get_all_users(): #Только для академика
 async def main():
     await create_database()
     await setup_grades()
+    configure_mappers()
     # await add_user(UserAddSchema(name='Батталов Тагир Вадимович', login='student134235', password='Testik=56'))
     # await add_user(UserAddSchema(name='Акишин Илья Сергеевич', login='student134231', password='Testik=56'))
     # await add_course(CourseAddSchema(course=2, teacher_name='Светлана Сергеевна', course_name='BigData', weight=2))
