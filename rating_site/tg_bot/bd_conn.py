@@ -20,7 +20,7 @@ class Achievement(Base):
     __tablename__ = 'achievements'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_name: Mapped[str] = mapped_column(String(255))
+    user_tg_id: Mapped[int] = mapped_column(ForeignKey('telegram_data.id'))
     status: Mapped[str] = mapped_column(String(30), default='viewing')
     categories: Mapped[str] = mapped_column(String(300))
     file_path: Mapped[str] = mapped_column(String(255))
@@ -30,13 +30,18 @@ class Achievement(Base):
         server_default=text('(UNIX_TIMESTAMP())')
     )
 
-class UserTg(Base):
-    __tablename__ = 'telegram_ids'
+    user_tg = relationship('UserTg', back_populates='user_tg')
 
+class UserTg(Base):
+    __tablename__ = 'telegram_data'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), primary_key=True)
+    is_banned: Mapped[bool] = mapped_column(default=0)
     tg_name: Mapped[str] = mapped_column(String(255), primary_key=True)
 
     user = relationship('UserModel', back_populates='user_tg')
+    achievement = relationship('Achievement', back_populates='user_tg')
 
 class AchievementAddSchema(BaseModel):
     user_name: str
@@ -47,6 +52,7 @@ class AchievementAddSchema(BaseModel):
 
 class UserTgAddSchema(BaseModel):
     user_id: int
+    is_banned: bool
     tg_name: str
 
 async def add_bd_achievement(data: AchievementAddSchema):
@@ -67,6 +73,7 @@ async def add_user_tg(data: UserTgAddSchema):
     async with new_session() as session:
         new_tg = UserTg(
             user_id=data.user_id,
+            is_banned=data.is_banned,
             tg_name=data.tg_name,
         )
         session.add(new_tg)

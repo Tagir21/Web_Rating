@@ -10,7 +10,7 @@ from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, FSInputFi
 
 import os
 import uuid
-
+from mysql.connector import connect
 from dotenv import dotenv_values
 import asyncio
 
@@ -35,12 +35,33 @@ async def save_file_to_disk(bot, file_id):
     await bot.download_file(file.file_path, destination=file_path)
     return file_path
 
+def is_user_register(user_name: str):
+    conn = connect(host='localhost',
+                   port=3306,
+                   username='root',
+                   password='1234',
+                   database='grades_db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT login, tg_name, is_banned'
+                   ' FROM telegram_ids'
+                   ' JOIN users ON telegram_ids.id = users.id'
+                   ' WHERE tg_name = %s', (user_name))
+    user_data = cursor.fetchall()
+    conn.close()
+
+    return user_data
+
+
+
 class item_selection(StatesGroup):
+    enter_login = State()
     choosing = State()
     waiting_for_file = State()
 
 @menu.message(Command('start', 'register'))
 async def command_start_handler(message: Message):
+    user_id = message.from_user.username
+
     builder = ReplyKeyboardBuilder()
     builder.button(text='Добавить достижение')
     builder.button(text='Помощь')

@@ -163,5 +163,5 @@ async def deny_request(callback: CallbackQuery, state: FSMContext):
     await state.update_data(index=data['index'] + 1)
     await send_request(callback, state)
 
-@admin_r.callback_query(AdminStates.reviewing, F.data.startswith('ban'))
-async def ban_user(callback: CallbackQuery, state: FSMContext):
+# @admin_r.callback_query(AdminStates.reviewing, F.data.startswith('ban'))
+# async def ban_user(callback: CallbackQuery, state: FSMContext):
