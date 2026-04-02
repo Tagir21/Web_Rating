@@ -89,10 +89,8 @@ async def command_start_handler(message: Message, state: FSMContext):
     user_name = message.from_user.username
     tg_list = is_user_register(user_name)
 
-    tg_id_from_db = tg_list[0]
-    is_banned = tg_list[1]
-
     if tg_list:
+        is_banned = tg_list[1]
         if is_banned:
             await message.answer('Вы были заблокированы администратором')
             return
