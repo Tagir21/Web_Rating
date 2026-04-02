@@ -14,10 +14,14 @@ from mysql.connector import connect
 from dotenv import dotenv_values
 import asyncio
 
-from bd_conn import add_bd_achievement, AchievementAddSchema
+from db_conn import add_bd_achievement, AchievementAddSchema
 
 from admin import admin_r as admin_router
 
+
+##########################################Добавить обработку когда несколько телеграммов к одному login в выбором да/нет
+###########Добавить баны
+##########Добавить очистку из telegram_data по user_id = login
 # Получение токена бота из переменной окружения .env
 token = dotenv_values('.env')['BOT_TOKEN']
 admin_id = dotenv_values('.env')['ADMIN_ID']
@@ -42,16 +46,38 @@ def is_user_register(user_name: str):
                    password='1234',
                    database='grades_db')
     cursor = conn.cursor()
-    cursor.execute('SELECT login, tg_name, is_banned'
-                   ' FROM telegram_ids'
-                   ' JOIN users ON telegram_ids.id = users.id'
-                   ' WHERE tg_name = %s', (user_name))
-    user_data = cursor.fetchall()
+    cursor.execute('SELECT id, is_banned'
+                   ' FROM telegram_data'
+                   ' WHERE tg_name = %s', (user_name,))
+    user_data = cursor.fetchone()
     conn.close()
 
     return user_data
 
+def is_valid_login(login: str):
+    conn = connect(host='localhost',
+                   port=3306,
+                   username='root',
+                   password='1234',
+                   database='grades_db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, name FROM users WHERE login = %s', (login,))
+    user_id = cursor.fetchone()
 
+    return user_id
+
+def add_tg_user_name_in_db(tg_user_name: str, user_id: int):
+    conn = connect(host='localhost',
+                   port=3306,
+                   username='root',
+                   password='1234',
+                   database='grades_db')
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO telegram_data (user_id, tg_name)'
+                   ' VALUES'
+                   ' (%s, %s)', (user_id, tg_user_name))
+    conn.commit()
+    conn.close()
 
 class item_selection(StatesGroup):
     enter_login = State()
@@ -59,18 +85,55 @@ class item_selection(StatesGroup):
     waiting_for_file = State()
 
 @menu.message(Command('start', 'register'))
-async def command_start_handler(message: Message):
-    user_id = message.from_user.username
+async def command_start_handler(message: Message, state: FSMContext):
+    user_name = message.from_user.username
+    tg_list = is_user_register(user_name)
 
+    tg_id_from_db = tg_list[0]
+    is_banned = tg_list[1]
+
+    if tg_list:
+        if is_banned:
+            await message.answer('Вы были заблокированы администратором')
+            return
+        print(f'Я есть, но {tg_list}')
+        await show_main_menu(message)
+    else:
+        print(f'Меня нет, но {tg_list}')
+        await state.set_state(item_selection.enter_login)
+        await message.answer(
+            'Для начала работы введите ваш логин из академика',
+            reply_markup=ReplyKeyboardRemove()
+        )
+
+@menu.message(item_selection.enter_login, F.text)
+async def process_login(message: Message, state: FSMContext):
+    login = message.text.strip()
+    user_fetch = is_valid_login(login)
+    if not user_fetch:
+        await message.answer('Данного логина не существует, попробуйте ещё раз')
+        return
+
+    user_id = user_fetch[0]
+    real_name = user_fetch[1]
+
+    tg_user_name = message.from_user.username
+    add_tg_user_name_in_db(tg_user_name, user_id)
+
+    await state.clear()
+    await message.answer(f'Добро пожаловать, {real_name} !')
+    await show_main_menu(message)
+
+
+async def show_main_menu(message: Message):
     builder = ReplyKeyboardBuilder()
     builder.button(text='Добавить достижение')
     builder.button(text='Помощь')
     builder.button(text='Другое')
     builder.adjust(2)
-    await message.answer(f'Здравствуйте, {html.bold(message.from_user.full_name)}!\n'
-                         f'Добро пожаловать в 317kaf бот\n'
-                         f'Выберите желаемое действие',
+    await message.answer(f'Выберите желаемое действие',
                          reply_markup=builder.as_markup(resize_keyboard=True))
+
 
 @add_achievement.message(F.text == 'Добавить достижение')
 async def add_button(message: Message, state: FSMContext):
@@ -143,6 +206,9 @@ async def file_handler(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     items = data.get('items', [])
 
+    tg_list = is_user_register(message.from_user.username)
+    tg_id_from_db = tg_list[0]
+
     if message.photo:
         file_id = message.photo[-1].file_id
         file_type = 'photo'
@@ -157,7 +223,7 @@ async def file_handler(message: Message, state: FSMContext, bot: Bot):
     status = 'viewing'
 
     await add_bd_achievement(AchievementAddSchema(
-        user_name=user_name,
+        user_tg_id=tg_id_from_db,
         status=status,
         categories=', '.join(items),
         file_path=file_path,
