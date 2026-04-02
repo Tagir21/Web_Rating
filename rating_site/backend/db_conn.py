@@ -34,6 +34,7 @@ class UserModel(Base):
 
     akademy_grade = relationship('AkademyGradeModel', back_populates='user')
     dean_grade = relationship('DeanGradeModel', back_populates='user')
+    user_tg = relationship('UserTg', back_populates='user')
 
 class AkademyGradeModel(Base):
     __tablename__ = 'academy_grades'
