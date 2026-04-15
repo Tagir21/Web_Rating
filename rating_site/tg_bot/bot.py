@@ -19,9 +19,10 @@ from db_init import add_bd_achievement, AchievementAddSchema
 from admin import admin_r as admin_router
 
 
-##########################################Добавить обработку когда несколько телеграммов к одному login в выбором да/нет
-###########Добавить баны
+##########################################Добавить обработку когда несколько телеграммов к одному login в выбором да/нет ///ready
+###########Добавить баны // ready
 ##########Добавить очистку из telegram_data по user_id = login
+
 # Получение токена бота из переменной окружения .env
 token = dotenv_values('.env')['BOT_TOKEN']
 admin_id = dotenv_values('.env')['ADMIN_ID']
@@ -66,6 +67,21 @@ def is_valid_login(login: str):
 
     return user_id
 
+def linked_telegrams(user_id: int):
+    conn = connect(host='localhost',
+                   port=3306,
+                   username='root',
+                   password='1234',
+                   database='grades_db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT tg_name'
+                   ' FROM telegram_data'
+                   ' WHERE user_id = %s', (user_id,))
+    telegrams = cursor.fetchall()
+    conn.close()
+
+    return telegrams
+
 def add_tg_user_name_in_db(tg_user_name: str, user_id: int):
     conn = connect(host='localhost',
                    port=3306,
@@ -81,6 +97,7 @@ def add_tg_user_name_in_db(tg_user_name: str, user_id: int):
 
 class item_selection(StatesGroup):
     enter_login = State()
+    confirm_linking = State()
     choosing = State()
     waiting_for_file = State()
 
@@ -115,13 +132,50 @@ async def process_login(message: Message, state: FSMContext):
     user_id = user_fetch[0]
     real_name = user_fetch[1]
 
-    tg_user_name = message.from_user.username
-    add_tg_user_name_in_db(tg_user_name, user_id)
+    telegrams = linked_telegrams(user_id)
+    if len(telegrams) > 0:
+        await state.update_data(user_id=user_id, real_name=real_name)
+        await state.set_state(item_selection.confirm_linking)
+        telegram_list = '\n '.join([f'@{tg[0]}' for tg in telegrams])
 
+        builder = InlineKeyboardBuilder()
+        builder.button(text='Да', callback_data='confirm_linking')
+        builder.button(text='Нет', callback_data='disconfirm_linking')
+
+        await message.answer(f'К данному логину уже привязаны: {telegram_list}\n\n'
+                             f'Вы уверены, что хотите продолжить?',
+                             reply_markup=builder.as_markup(resize_keyboard=True))
+        return
+
+    await finish_linking(message, user_id, real_name, state)
+
+@menu.callback_query(item_selection.confirm_linking, F.data == 'confirm_linking')
+async def confirm_linking(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    user_id = data['user_id']
+    real_name = data['real_name']
+    tg_username = callback.from_user.username
+
+    await finish_linking(callback, tg_username, user_id, real_name, state)
+    await callback.answer()
+
+@menu.callback_query(item_selection.confirm_linking, F.data == 'disconfirm_linking')
+async def disconfirm_linking(callback: CallbackQuery, state: FSMContext):
     await state.clear()
-    await message.answer(f'Добро пожаловать, {real_name} !')
-    await show_main_menu(message)
+    await callback.message.answer('Привязка отменена\nВы можете начать заново с /start')
 
+    await callback.answer()
+
+async def finish_linking(source, tg_username:str, user_id: int, real_name: str,
+                         state: FSMContext):
+    add_tg_user_name_in_db(tg_username, user_id)
+    await state.clear()
+    if isinstance(source, CallbackQuery):
+        await source.message.answer(f'Добро пожаловать, {real_name}!')
+        await show_main_menu(source.message)
+    else:
+        await source.answer(f'Добро пожаловать, {real_name}!')
+        await show_main_menu(source.message)
 
 async def show_main_menu(message: Message):
     builder = ReplyKeyboardBuilder()

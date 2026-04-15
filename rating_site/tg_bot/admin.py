@@ -15,6 +15,11 @@ from dotenv import dotenv_values
 import asyncio
 
 admin_id = int(dotenv_values('.env')['ADMIN_ID'])
+db_hostname = dotenv_values('.env')['DB_HOSTNAME']
+db_port = int(dotenv_values('.env')['DB_PORT'])
+db_username = dotenv_values('.env')['DB_USERNAME']
+db_password = dotenv_values('.env')['DB_PASSWORD']
+db_name = dotenv_values('.env')['DB_NAME']
 
 admin_r = Router()
 
@@ -37,13 +42,18 @@ def request_keyboard(request_id):
 
     return builder
 
-def get_viewing_requests_count():
-    conn = connect(host='localhost',
-                   port=3306,
-                   username='root',
-                   password='1234',
-                   database='grades_db')
+def bd_connect():
+    conn = connect(host=db_hostname,
+                   port=db_port,
+                   username=db_username,
+                   password=db_password,
+                   database=db_name)
     cursor = conn.cursor()
+
+    return conn, cursor
+
+def get_viewing_requests_count():
+    conn, cursor = bd_connect()
     cursor.execute(
         'SELECT COUNT(*) AS count FROM achievements WHERE status = "viewing"'
     )
@@ -53,12 +63,7 @@ def get_viewing_requests_count():
     return total_count
 
 def get_all_viewing_requests():
-    conn = connect(host='localhost',
-                   port=3306,
-                   username='root',
-                   password='1234',
-                   database='grades_db')
-    cursor = conn.cursor()
+    conn, cursor = bd_connect()
     cursor.execute('SELECT id, (SELECT tg_name FROM telegram_data WHERE telegram_data.id = user_tg_id),'
                    ' categories, file_path, file_type'
                    ' FROM achievements WHERE status = "viewing"')
@@ -68,29 +73,43 @@ def get_all_viewing_requests():
     return all_viewing_requests
 
 def update_request_status(request_id, status):
-    print('Hello')
-    conn = connect(host='localhost',
-                   port=3306,
-                   username='root',
-                   password='1234',
-                   database='grades_db')
-    cursor = conn.cursor()
+    conn, cursor = bd_connect()
     cursor.execute('UPDATE achievements SET status = %s WHERE id = %s',
                    (status, request_id))
     conn.commit()
     conn.close()
 
-@admin_r.message(Command('admin'))
-async def admin_panel(message: Message):
-    print(f'{admin_id}'
-          f'\n{message.from_user.id}')
-    if message.from_user.id != admin_id:
-        await message.answer('У вас нет доступа к этой команде (фу уйди)')
+def ban_user_by_tg_user_name(request_id):
+    conn, cursor = bd_connect()
+    cursor.execute('UPDATE telegram_data'
+                   ' SET is_banned = 1'
+                   ' WHERE id = (SELECT user_tg_id'
+                   '             FROM achievements'
+                   '             WHERE id = %s)', (request_id,))
+    conn.commit()
+    conn.close()
+
+async def admin_panel(source):
+    if isinstance(source, CallbackQuery):
+        user_id = source.from_user.id
+        reply_func = source.message.answer
+        await source.answer()
+    else:
+        user_id = source.from_user.id
+        reply_func = source.answer
+
+    if user_id != admin_id:
+        await reply_func('У вас нет доступа к этой команде (фу уйди)')
         return
+
     total_count = get_viewing_requests_count()
-    await message.answer('Добро пожаловать\n'
+    await reply_func('Добро пожаловать\n'
                          f'Было создано {total_count} новых заявок',
                          reply_markup=admin_keyboard().as_markup())
+
+@admin_r.message(Command('admin'))
+async def admin(message: Message):
+    await admin_panel(message)
 
 
 @admin_r.callback_query(F.data == 'look')
@@ -165,5 +184,19 @@ async def deny_request(callback: CallbackQuery, state: FSMContext):
     await state.update_data(index=data['index'] + 1)
     await send_request(callback, state)
 
-# @admin_r.callback_query(AdminStates.reviewing, F.data.startswith('ban'))
-# async def ban_user(callback: CallbackQuery, state: FSMContext):
+@admin_r.callback_query(AdminStates.reviewing, F.data.startswith('ban'))
+async def ban_user(callback: CallbackQuery, state: FSMContext):
+    request_id = int(callback.data.split('_')[1])
+
+    ban_user_by_tg_user_name(request_id)
+    await callback.answer('Пользователь успешно заблокирован')
+
+    data = await state.get_data()
+    await state.update_data(index=data['index'] + 1)
+    await send_request(callback, state)
+
+@admin_r.callback_query(AdminStates.reviewing, F.data.startswith('back'))
+async def back_user(callback: CallbackQuery, state: FSMContext):
+    await admin_panel(callback)
+    await state.clear()
+
