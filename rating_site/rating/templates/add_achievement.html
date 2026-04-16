@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <!-- Заголовок -->
+            <h2 class="text-center mb-4 fw-bold">Новое достижение</h2>
+            
+            <!-- Подзаголовок -->
+            <p class="text-center text-muted mb-4">
+                Выберите вид своего достижения <span class="text-muted">(можно несколько, если не уверены)</span>
+            </p>
+            
+            <!-- Форма добавления достижения -->
+            <form method="post" enctype="multipart/form-data" id="achievementForm" action="{% url 'add_achievement' %}">
+                {% csrf_token %}
+                
+                <!-- Карточка с категориями -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body p-4">
+                        <!-- Кликабельные категории (можно несколько) -->
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="category-card" data-category="academic" onclick="toggleCategory(this)">
+                                    <div class="form-check">
+                                        <input class="form-check-input category-checkbox" type="checkbox" 
+                                               id="category_academic" name="categories" value="academic" onclick="event.stopPropagation()">
+                                        <label class="form-check-label fs-5" for="category_academic" onclick="event.stopPropagation()">
+                                            Учебная активность
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="category-card" data-category="science" onclick="toggleCategory(this)">
+                                    <div class="form-check">
+                                        <input class="form-check-input category-checkbox" type="checkbox" 
+                                               id="category_science" name="categories" value="science" onclick="event.stopPropagation()">
+                                        <label class="form-check-label fs-5" for="category_science" onclick="event.stopPropagation()">
+                                            Научная активность
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="category-card" data-category="social" onclick="toggleCategory(this)">
+                                    <div class="form-check">
+                                        <input class="form-check-input category-checkbox" type="checkbox" 
+                                               id="category_social" name="categories" value="social" onclick="event.stopPropagation()">
+                                        <label class="form-check-label fs-5" for="category_social" onclick="event.stopPropagation()">
+                                            Социальная активность
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="category-card" data-category="cultural" onclick="toggleCategory(this)">
+                                    <div class="form-check">
+                                        <input class="form-check-input category-checkbox" type="checkbox" 
+                                               id="category_cultural" name="categories" value="cultural" onclick="event.stopPropagation()">
+                                        <label class="form-check-label fs-5" for="category_cultural" onclick="event.stopPropagation()">
+                                            Культурно-досуговая активность
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Добавьте описание (необязательно) -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold fs-5">Добавьте описание (необязательно)</label>
+                    <textarea class="form-control" name="description" rows="4" 
+                              placeholder="Введите описание вашего достижения..." 
+                              style="border-radius: 10px;"></textarea>
+                </div>
+                
+                <!-- Прикрепить файл -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold fs-5">Прикрепить файл</label>
+                    <input type="file" class="form-control" name="files" id="fileInput" 
+                           multiple accept=".pdf,.doc,.docx,.jpg,.png,.jpeg">
+                    <div class="form-text text-muted">Поддерживаемые форматы: PDF, DOC, DOCX, JPG, PNG. Можно выбрать несколько файлов.</div>
+                </div>
+                
+                <!-- Сюда фото или файл прикрепляются (область предпросмотра) -->
+                <div class="mb-4" id="filePreviewArea">
+                    <div class="alert alert-secondary text-center" id="emptyPreviewMsg">
+                        📁 Здесь будут отображаться прикрепленные файлы
+                    </div>
+                    <div id="fileList" class="d-flex flex-wrap gap-2"></div>
+                </div>
+                
+                <!-- Кнопки -->
+                <div class="d-flex justify-content-between gap-3 mt-4">
+                    <a href="{% url 'my_achievements' %}" class="btn btn-secondary btn-lg px-4">
+                        ← Назад
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg px-5">
+                        Отправить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .category-card {
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 15px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background-color: #fff;
+    }
+    
+    .category-card:hover {
+        border-color: #0d6efd;
+        background-color: #f8f9ff;
+        transform: translateY(-2px);
+    }
+    
+    .category-card.selected {
+        border-color: #0d6efd;
+        background-color: #e7f1ff;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+    }
+    
+    .form-check-label {
+        cursor: pointer;
+        font-weight: 500;
+    }
+    
+    .file-item {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 8px 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .file-item .remove-file {
+        cursor: pointer;
+        color: #dc3545;
+        font-weight: bold;
+        margin-left: 8px;
+    }
+    
+    .file-item .remove-file:hover {
+        color: #a71d2a;
+    }
+    
+    textarea:focus, input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        outline: none;
+    }
+</style>
+
+<script>
+    // Функция для переключения категории при клике на весь прямоугольник
+    function toggleCategory(cardElement) {
+        const checkbox = cardElement.querySelector('.category-checkbox');
+        checkbox.checked = !checkbox.checked;
+        
+        if (checkbox.checked) {
+            cardElement.classList.add('selected');
+        } else {
+            cardElement.classList.remove('selected');
+        }
+    }
+    
+    // Предпросмотр файлов
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const emptyPreviewMsg = document.getElementById('emptyPreviewMsg');
+    let filesArray = [];
+    
+    fileInput.addEventListener('change', function(e) {
+        filesArray = Array.from(e.target.files);
+        updateFilePreview();
+    });
+    
+    function updateFilePreview() {
+        fileList.innerHTML = '';
+        
+        if (filesArray.length === 0) {
+            emptyPreviewMsg.style.display = 'block';
+            return;
+        }
+        
+        emptyPreviewMsg.style.display = 'none';
+        
+        filesArray.forEach((file, index) => {
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'file-item';
+            
+            // Определяем иконку по типу файла
+            let icon = '📄';
+            if (file.type.startsWith('image/')) {
+                icon = '🖼️';
+            } else if (file.type === 'application/pdf') {
+                icon = '📑';
+            }
+            
+            const fileSize = (file.size / 1024).toFixed(1);
+            
+            fileDiv.innerHTML = `
+                ${icon} <span class="file-name">${file.name}</span>
+                <span class="text-muted small">(${fileSize} КБ)</span>
+                <span class="remove-file" data-index="${index}">✕</span>
+            `;
+            
+            fileList.appendChild(fileDiv);
+        });
+        
+        // Добавляем обработчики для удаления файлов
+        document.querySelectorAll('.remove-file').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const index = parseInt(this.dataset.index);
+                filesArray.splice(index, 1);
+                
+                // Обновляем input
+                const dataTransfer = new DataTransfer();
+                filesArray.forEach(file => dataTransfer.items.add(file));
+                fileInput.files = dataTransfer.files;
+                
+                updateFilePreview();
+            });
+        });
+    }
+    
+    // Валидация перед отправкой
+    document.getElementById('achievementForm').addEventListener('submit', function(e) {
+        const selectedCategories = document.querySelectorAll('.category-checkbox:checked');
+        if (selectedCategories.length === 0) {
+            e.preventDefault();
+            alert('Пожалуйста, выберите хотя бы одну категорию достижения');
+            return;
+        }
+    });
+</script>
+{% endblock %}

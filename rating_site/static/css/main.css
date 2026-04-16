@@ -2,11 +2,11 @@
 header {
     position: sticky;
     top: 0;
-    padding: 10px;
+    padding: 50px;
     z-index: 1000;
-    background: #fff;
-    -wbkit-box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
-        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.55);
+    background: #faf9fc;
+    /* -wbkit-box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.55); */
 
 }
 
@@ -21,7 +21,7 @@ header {
 /*body*/
 body {
     padding-top: 20px;
-    background-color: #f8f9fa;
+    background-color: #ffffff;
 }
 
 .table-responsive {

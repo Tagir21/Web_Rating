@@ -1,7 +1,32 @@
-{% extends 'rating/base.html' %}
+{% extends 'base.html' %}
 {% load static %}
 
 {% block content %}
+
+
+<div class="container-fluid py-5">
+    <!-- Профиль в серой закрашенной рамке -->
+    <div class="p-4 mb-4 rounded-3" style="background-color: #faf9fc;">
+        <p class="fs-3 fw-bold mb-3">Профиль</p>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div style="display: flex; flex-direction: column;">
+                <strong class="fs-4">ФИО</strong>
+                <span id="user_fio" class="fs-4">Загрузка...</span>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <strong class="fs-4">Студенческая группа</strong>
+                <span id="user_group" class="fs-4">Загрузка...</span>
+            </div>
+        </div>
+        
+        <div style="display: flex; flex-direction: column;">
+            <strong class="fs-4">Связанные telegram</strong>
+            <span id="telegram" class="fs-4">Загрузка...</span>
+        </div>
+    </div>
+    <script src="{% static 'js/get_user_data.js' %}"></script>
+</div>
 <div class="rating-container">
     <h1 class="text-center mb-4">Таблица рейтинга студентов</h1>
 
@@ -28,12 +53,16 @@
     </div>
 
     <script src="{% static 'js/get_all_grades.js' %}"></script>
-
     <div class="d-flex justify-content-between mt-4">
+        
         <a href="{% url 'home' %}" class="btn btn-secondary">
             ← На главную
         </a>
         {% comment %} Можно добавить кнопки для сортировки или других действий {% endcomment %}
     </div>
+    
 </div>
+
+
+
 {% endblock %}
