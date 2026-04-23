@@ -92,7 +92,9 @@ class Achievement(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_tg_id: Mapped[int] = mapped_column(ForeignKey('telegram_data.id'))
     status: Mapped[str] = mapped_column(String(30), default='viewing')
-    categories: Mapped[str] = mapped_column(String(300))
+    category: Mapped[str] = mapped_column(String(300))
+    grade: Mapped[float] = mapped_column(default=0.0)
+    description: Mapped[str] = mapped_column(String(500), default='', server_default=text(''))
     file_path: Mapped[str] = mapped_column(String(255))
     file_type: Mapped[str] = mapped_column(String(30))
     created_at: Mapped[int] = mapped_column(
@@ -148,7 +150,9 @@ class CourseAddSchema(BaseModel):
 class AchievementAddSchema(BaseModel):
     user_tg_id: int
     status: str
-    categories: str
+    category: str
+    grade: float
+    description: str
     file_path: str
     file_type: str
 
@@ -215,7 +219,9 @@ async def add_bd_achievement(data: AchievementAddSchema):
         new_achievement = Achievement(
             user_tg_id=data.user_tg_id,
             status=data.status,
-            categories=data.categories,
+            category=data.category,
+            grade=data.grade,
+            description=data.description,
             file_path=data.file_path,
             file_type=data.file_type
         )

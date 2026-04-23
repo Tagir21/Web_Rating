@@ -131,6 +131,7 @@ async def process_login(message: Message, state: FSMContext):
 
     user_id = user_fetch[0]
     real_name = user_fetch[1]
+    tg_username = message.from_user.username
 
     telegrams = linked_telegrams(user_id)
     if len(telegrams) > 0:
@@ -147,7 +148,7 @@ async def process_login(message: Message, state: FSMContext):
                              reply_markup=builder.as_markup(resize_keyboard=True))
         return
 
-    await finish_linking(message, user_id, real_name, state)
+    await finish_linking(message, tg_username, user_id, real_name, state)
 
 @menu.callback_query(item_selection.confirm_linking, F.data == 'confirm_linking')
 async def confirm_linking(callback: CallbackQuery, state: FSMContext):
@@ -175,7 +176,7 @@ async def finish_linking(source, tg_username:str, user_id: int, real_name: str,
         await show_main_menu(source.message)
     else:
         await source.answer(f'Добро пожаловать, {real_name}!')
-        await show_main_menu(source.message)
+        await show_main_menu(source)
 
 async def show_main_menu(message: Message):
     builder = ReplyKeyboardBuilder()
@@ -211,7 +212,7 @@ async def add_button(message: Message, state: FSMContext):
 
 @add_achievement.callback_query(item_selection.choosing, F.data.in_(['Учебная активность', 'Научная активность',
                                                                      'Социальная активность', 'Культурно досуговая активность']))
-async def add_item(callback: CallbackQuery, state: FSMContext ):
+async def add_item(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     items = data.get('items', [])
 
@@ -253,7 +254,20 @@ async def done_handler(callback: CallbackQuery, state: FSMContext):
                                           f'Теперь отправьте файл или фотографию, подтверждающую ваше достижение')
     await callback.answer()
 
+
 @add_achievement.message(item_selection.waiting_for_file, F.photo | F.document)
+async def request_commit(message: Message):
+    builder = InlineKeyboardBuilder()
+    builder.button(text='Отправить', callback_data='send')
+    builder.button(text='Добавить описание', callback_data='add_description')
+    builder.adjust(1)
+
+    await message.answer('Проверьте, что все введено правильно\n'
+                         'Что то не так? Начните заново с /start',
+                         reply_markup=builder.as_markup(resize_keyboard=True))
+
+
+@add_achievement.message(item_selection.waiting_for_file, F.data == 'send')
 async def file_handler(message: Message, state: FSMContext, bot: Bot):
     data = await state.get_data()
     items = data.get('items', [])
@@ -271,18 +285,22 @@ async def file_handler(message: Message, state: FSMContext, bot: Bot):
     file_path = await save_file_to_disk(bot, file_id)
     await state.update_data(file_id = file_id, file_type = file_type)
 
-    user_name = message.from_user.username
     status = 'viewing'
     print(tg_id_from_db)
     await add_bd_achievement(AchievementAddSchema(
         user_tg_id=tg_id_from_db,
         status=status,
-        categories=', '.join(items),
+        category=', '.join(items),
+        grade = 0.0,
         file_path=file_path,
         file_type=file_type
     ))
     await message.answer('Достижение отправлено на проверку')
     await state.clear()
+
+@add_achievement.message(item_selection.waiting_for_file, F.data == 'add_description')
+async def send_commit(message: Message):
+    await message.edit_text(text='Введите описание к заявке:')
 
 
 @add_achievement.message(item_selection.waiting_for_file)

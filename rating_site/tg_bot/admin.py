@@ -25,6 +25,8 @@ admin_r = Router()
 
 class AdminStates(StatesGroup):
     reviewing = State()
+    choosing = State()
+    rate = State()
 
 def admin_keyboard():
     builder = InlineKeyboardBuilder()
@@ -65,19 +67,24 @@ def get_viewing_requests_count():
 def get_all_viewing_requests():
     conn, cursor = bd_connect()
     cursor.execute('SELECT id, (SELECT tg_name FROM telegram_data WHERE telegram_data.id = user_tg_id),'
-                   ' categories, file_path, file_type'
+                   ' category, file_path, file_type'
                    ' FROM achievements WHERE status = "viewing"')
     all_viewing_requests = cursor.fetchall()
     conn.close()
 
     return all_viewing_requests
 
-def update_request_status(request_id, status):
+def update_request(request_id, status, category=None, grade=None):
     conn, cursor = bd_connect()
-    cursor.execute('UPDATE achievements SET status = %s WHERE id = %s',
-                   (status, request_id))
+    if grade and category:
+        cursor.execute('UPDATE achievements SET status = %s, category = %s, grade = %s WHERE id = %s',
+                       (status, category, grade, request_id))
+    else:
+        cursor.execute('UPDATE achievements SET status = %s WHERE id = %s',
+                       (status, request_id))
     conn.commit()
     conn.close()
+
 
 def ban_user_by_tg_user_name(request_id):
     conn, cursor = bd_connect()
@@ -125,13 +132,18 @@ async def show_requests(callback: CallbackQuery, state: FSMContext):
 
     await send_request(callback, state)
 
-async def send_request(callback: CallbackQuery, state: FSMContext):
+async def send_request(source, state: FSMContext):
+    if isinstance(source, CallbackQuery):
+        reply_func = source.message
+    else:
+        reply_func = source
+
     data = await state.get_data()
     requests = data['requests']
     index = data['index']
 
     if index >= len(requests):
-        await callback.message.answer('Все заявки обработаны')
+        await reply_func.answer('Все заявки обработаны')
         await state.clear()
         return
 
@@ -145,44 +157,97 @@ async def send_request(callback: CallbackQuery, state: FSMContext):
 
     caption = (f'Достижение от: @{html.bold(user_name)}\n\n'
                f'{html.bold(categories)}')
+    await state.update_data(caption=caption)
     if os.path.exists(file_path):
         if file_type == 'photo':
-            await callback.message.bot.send_photo(
-                callback.message.chat.id,
+            await reply_func.bot.send_photo(
+                reply_func.chat.id,
                 FSInputFile(file_path),
                 caption=caption,
                 reply_markup=request_keyboard(request_id).as_markup())
         else:
-             await callback.message.bot.send_document(
-                 callback.message.chat.id,
+             await reply_func.bot.send_document(
+                 reply_func.chat.id,
                  FSInputFile(file_path),
                  caption=caption,
                  reply_markup=request_keyboard(request_id).as_markup())
     else:
-        await callback.message.answer(f'Файл не найден: {file_path}')
+        await reply_func.answer(f'Файл не найден: {file_path}')
         await state.update_data(index=index+1)
-        await send_request(callback, state)
+        await send_request(reply_func, state)
 
 @admin_r.callback_query(AdminStates.reviewing, F.data.startswith('approve'))
 async def approve_request(callback: CallbackQuery, state: FSMContext):
     request_id = int(callback.data.split('_')[1])
-    update_request_status(request_id, 'approved')
-    await callback.answer('Заявка одобрена')
+    # update_request_status(request_id, 'approved')
+    # await callback.answer('Заявка одобрена')
+
+    await state.update_data(temp_request_id=request_id)
+    await state.set_state(AdminStates.choosing)
+    await type_keyboard_show(callback, state)
     print(request_id)
 
+async def type_keyboard_show(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    await state.update_data(index=data['index'] + 1)
-    await send_request(callback, state)
+    request_id = data['temp_request_id']
+    caption = data['caption']
+
+    caption += '\n\n\nВыберите вид достижения:'
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text='Учебная активность', callback_data='Учебная активность')
+    builder.button(text='Научная активность', callback_data='Научная активность')
+    builder.button(text='Социальная активность', callback_data='Социальная активность')
+    builder.button(text='Культурно досуговая активность', callback_data='Культурно досуговая активность')
+    builder.adjust(1)
+
+    await callback.message.edit_caption(caption=caption, reply_markup=builder.as_markup(resize_keyboard=True))
+
+@admin_r.callback_query(AdminStates.choosing, F.data.in_(['Учебная активность', 'Научная активность',
+                                                          'Социальная активность', 'Культурно досуговая активность']))
+async def type_choosing(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+
+    caption = data['caption']
+    caption += '\n\n\nВведите оценку за достижение (от 1 до 10):'
+
+    request_type = callback.data
+    await state.update_data(temp_request_type=request_type)
+    await callback.message.edit_caption(caption=caption)
+    await state.set_state(AdminStates.rate)
+    await callback.answer()
+
 
 @admin_r.callback_query(AdminStates.reviewing, F.data.startswith('deny'))
 async def deny_request(callback: CallbackQuery, state: FSMContext):
     request_id = int(callback.data.split('_')[1])
-    update_request_status(request_id, 'deny')
+    update_request(request_id, 'deny')
     await callback.answer('Заявка отклонена')
 
     data = await state.get_data()
     await state.update_data(index=data['index'] + 1)
     await send_request(callback, state)
+
+@admin_r.message(AdminStates.rate, F.text)
+async def rate_process(message: Message, state: FSMContext):
+    try:
+        grade = float(message.text.strip())
+        if grade < 1 or grade > 10:
+            raise ValueError
+    except ValueError:
+        await message.answer('Число неверно\nВведите число от 1 до 10')
+        return
+
+    data = await state.get_data()
+    request_id = data['temp_request_id']
+    request_type = data['temp_request_type']
+
+    update_request(request_id, status='approve', category=request_type, grade=grade)
+    await message.answer(f'Оценка {grade} выставлена. Заявка одобрена')
+
+    await state.update_data(index=data['index'] + 1)
+    await state.set_state(AdminStates.reviewing)
+    await send_request(message, state)
 
 @admin_r.callback_query(AdminStates.reviewing, F.data.startswith('ban'))
 async def ban_user(callback: CallbackQuery, state: FSMContext):
