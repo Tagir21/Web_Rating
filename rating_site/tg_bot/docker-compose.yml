@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_grades_db
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: grades_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+
+#USE grades_db;
+#INSERT INTO users
+#VALUES
+#(1, "Tagir", "student134235", "Testik=56", False, 1774869837),
+#(2, "Ilya", "student134231", "Testik=56", True, 1774869899),
+#(3, "Yana", "yanmar", "Ilya=loh", True, 1774869945),
+#(4, "Georgiy", "gushatskiy", "Ya_daun", False, 1774870435);
+#
+#INSERT INTO courses
+#VALUES
+#(1, 1, "Artem_Nicolaevich", "Virtual'naya_real'nost", 9, 1774870469),
+#(2, 2, "Ylia_Vyacheslavovna", "Marketing", 6, 1774870569),
+#(3, 4, "Svetlana_Sergeevna", "Genial'nost", 10, 1774870871);
+#
+#INSERT INTO academy_grades
+#VALUES
+#(1, 4, 3, 4.5, 1774869843);
