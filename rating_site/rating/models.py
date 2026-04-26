@@ -13,6 +13,7 @@ class CustomUser(AbstractBaseUser):
     name = models.CharField(max_length=255)
     login = models.CharField(max_length=255)
     password = models.CharField(max_length=255)
+    study_group_id = models.IntegerField()
     is_login = models.IntegerField()
 
     last_event = models.IntegerField(blank=True, null=True, db_column='last_event')

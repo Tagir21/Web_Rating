@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.core.files.storage import FileSystemStorage
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
+from django.http import JsonResponse
 import os
 
 def home(request):
@@ -20,7 +21,7 @@ def profile(request):
     return render(request, 'profile.html')
 
 @login_required
-def add_ach(request):
+def add_achievement(request):
     if request.method == 'POST':
         # Получаем данные из формы
         description = request.POST.get('description', '')

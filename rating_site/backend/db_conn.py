@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload, joinedload
 from sqlalchemy import String, Integer, ForeignKey, select
 from pydantic import BaseModel
 from sqlalchemy.sql.expression import text
@@ -25,6 +25,7 @@ class UserModel(Base):
     name: Mapped[str] = mapped_column(String(255))
     login: Mapped[str] = mapped_column(String(255))
     password: Mapped[str] = mapped_column(String(255))
+    study_group_id: Mapped[int] = mapped_column(ForeignKey('study_groups.id'))
     is_login: Mapped[bool] = mapped_column(default=False)
     last_event: Mapped[int] = mapped_column(
         Integer,
@@ -32,9 +33,18 @@ class UserModel(Base):
         onupdate = text('UNIX_TIMESTAMP()')
     )
 
+    study_group = relationship('StudyGroupModel', back_populates='user')
     akademy_grade = relationship('AkademyGradeModel', back_populates='user')
     dean_grade = relationship('DeanGradeModel', back_populates='user')
     user_tg = relationship('UserTg', back_populates='user')
+
+class StudyGroupModel(Base):
+    __tablename__ = 'study_groups'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+
+    user = relationship('UserModel', back_populates='study_group')
 
 class AkademyGradeModel(Base):
     __tablename__ = 'academy_grades'
@@ -236,15 +246,20 @@ async def add_user_tg(data: UserTgAddSchema):
 
         return {'ok': True}
 
-async def get_all_users(): #Только для академика
+async def get_users_rating_by_group(group_id=None): #Только для академика
     async with new_session() as session:
         query = select(UserModel).options(
             selectinload(UserModel.akademy_grade).joinedload(AkademyGradeModel.course),
-            selectinload(UserModel.dean_grade).joinedload(DeanGradeModel.course)
+            selectinload(UserModel.dean_grade).joinedload(DeanGradeModel.course),
+            joinedload(UserModel.study_group)
         )
+
+        if group_id:
+            query = query.where(UserModel.study_group_id == group_id)
+
         result_sql = await session.execute(query)
 
-        users = result_sql.scalars().all()
+        users = result_sql.unique().scalars().all()
         result = []
 
         for user in users:
@@ -262,6 +277,31 @@ async def get_all_users(): #Только для академика
             })
 
         return result
+
+ # УБРАТЬ
+async def get_user_data_by_login(login: str):
+    async with new_session() as session:
+        query = select(UserModel).options(
+            joinedload(UserModel.user_tg),
+            joinedload(UserModel.study_group)
+        ).where(UserModel.login == login)
+
+        result_sql = await session.execute(query)
+        user_data = result_sql.unique().scalars().all()
+
+        linked_telegrams = []
+
+        for data in user_data:
+            result = {
+                'user_fio': data.name,
+                'user_group': data.study_group.name
+            }
+            for tg_account in data.user_tg:
+                linked_telegrams.append(tg_account.tg_name)
+
+        result['linked_telegrams'] = linked_telegrams
+        return result
+
 
 async def main():
     await create_database()
