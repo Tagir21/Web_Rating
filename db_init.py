@@ -36,7 +36,7 @@ class UserModel(Base):
     study_group = relationship('StudyGroupModel', back_populates='user')
     akademy_grade = relationship('AkademyGradeModel', back_populates='user')
     dean_grade = relationship('DeanGradeModel', back_populates='user')
-    user_tg = relationship('UserTg', back_populates='user')
+    user_tg = relationship('UserTgModel')
 
 class StudyGroupModel(Base):
     __tablename__ = 'study_groups'
@@ -112,7 +112,7 @@ class AchievementModel(Base):
         server_default=text('(UNIX_TIMESTAMP())')
     )
 
-    user_tg = relationship('UserTg', back_populates='achievement')
+    user_tg = relationship('UserTgModel', back_populates='achievement')
 
 class UserTgModel(Base):
     __tablename__ = 'telegram_data'
@@ -123,7 +123,7 @@ class UserTgModel(Base):
     tg_name: Mapped[str] = mapped_column(String(255))
 
     # user = relationship('UserModel', back_populates='user_tg')
-    achievement = relationship('Achievement', back_populates='user_tg')
+    achievement = relationship('AchievementModel', back_populates='user_tg')
 
 async def setup_grades():
     async with engine.begin() as conn:
