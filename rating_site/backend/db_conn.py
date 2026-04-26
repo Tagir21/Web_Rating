@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload, joinedload
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload, joinedload, \
+    with_loader_criteria
 from sqlalchemy import String, Integer, ForeignKey, select
 from pydantic import BaseModel
 from sqlalchemy.sql.expression import text
@@ -96,13 +97,15 @@ class CourseModel(Base):
     akademy_grade = relationship('AkademyGradeModel', back_populates='course')
     dean_grade = relationship('DeanGradeModel', back_populates='course')
 
-class Achievement(Base):
+class AchievementModel(Base):
     __tablename__ = 'achievements'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_tg_id: Mapped[int] = mapped_column(ForeignKey('telegram_data.id'))
     status: Mapped[str] = mapped_column(String(30), default='viewing')
-    categories: Mapped[str] = mapped_column(String(300))
+    category: Mapped[str] = mapped_column(String(300))
+    grade: Mapped[float] = mapped_column(default=0.0)
+    description: Mapped[Optional[str]] = mapped_column(String(500), default=None, server_default=text('NULL'))
     file_path: Mapped[str] = mapped_column(String(255))
     file_type: Mapped[str] = mapped_column(String(30))
     created_at: Mapped[int] = mapped_column(
@@ -158,7 +161,9 @@ class CourseAddSchema(BaseModel):
 class AchievementAddSchema(BaseModel):
     user_tg_id: int
     status: str
-    categories: str
+    category: str
+    grade: float
+    description: Optional[str] = None
     file_path: str
     file_type: str
 
@@ -222,10 +227,10 @@ async def add_course(data: CourseAddSchema):
 
 async def add_bd_achievement(data: AchievementAddSchema):
     async with new_session() as session:
-        new_achievement = Achievement(
+        new_achievement = AchievementModel(
             user_tg_id=data.user_tg_id,
             status=data.status,
-            categories=data.categories,
+            category=data.category,
             file_path=data.file_path,
             file_type=data.file_type
         )
@@ -252,7 +257,8 @@ async def get_users_rating_by_group(group_id=None): #Только для ака�
             selectinload(UserModel.akademy_grade).joinedload(AkademyGradeModel.course),
             selectinload(UserModel.dean_grade).joinedload(DeanGradeModel.course),
             joinedload(UserModel.study_group),
-            joinedload(UserModel.user_tg).joinedload(UserTg.achievement)
+            joinedload(UserModel.user_tg).joinedload(UserTg.achievement),
+            with_loader_criteria(AchievementModel, AchievementModel.status == 'approve')
         )
 
         if group_id:
@@ -265,16 +271,23 @@ async def get_users_rating_by_group(group_id=None): #Только для ака�
 
         for user in users:
             sum_akademy_grades = 0.0
-            sum_dean_grade = 0.0
+            sum_dean_grades = 0.0
+            sum_science_grades = 0.0
             for grade in user.akademy_grade:
                 sum_akademy_grades += grade.grade * grade.course.weight
             for grade in user.dean_grade:
-                sum_dean_grade += grade.grade * grade.course.weight
+                sum_dean_grades += grade.grade * grade.course.weight
+
+            activity = {}
+
+            for linked_telegram in user.user_tg:
+                for achievement in linked_telegram.achievement:
+                    print(achievement.grade)
 
             result.append({
                 'id': user.id,
                 'user_name': user.name,
-                'study_activity': sum_akademy_grades + sum_dean_grade
+                'study_activity': sum_akademy_grades + sum_dean_grades
             })
 
         return result

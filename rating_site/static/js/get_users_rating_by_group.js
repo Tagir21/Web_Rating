@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     <tr>
                         <th scope="row">${index + 1}</th>
                         <td>${user.user_name}</td>
-                        <td>${user.science_activity}</td>
+                        <td>${user.study_activity}</td>
                     </tr>
                 `;
             });
