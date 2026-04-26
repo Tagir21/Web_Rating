@@ -25,6 +25,7 @@ class UserModel(Base):
     name: Mapped[str] = mapped_column(String(255))
     login: Mapped[str] = mapped_column(String(255))
     password: Mapped[str] = mapped_column(String(255))
+    study_group_id: Mapped[int] = mapped_column(ForeignKey('study_groups.id'))
     is_login: Mapped[bool] = mapped_column(default=False)
     last_event: Mapped[int] = mapped_column(
         Integer,
@@ -32,9 +33,18 @@ class UserModel(Base):
         onupdate = text('UNIX_TIMESTAMP()')
     )
 
+    study_group = relationship('StudyGroupModel', back_populates='user')
     akademy_grade = relationship('AkademyGradeModel', back_populates='user')
     dean_grade = relationship('DeanGradeModel', back_populates='user')
-    user_tg = relationship('UserTg')
+    user_tg = relationship('UserTg', back_populates='user')
+
+class StudyGroupModel(Base):
+    __tablename__ = 'study_groups'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+
+    user = relationship('UserModel', back_populates='study_group')
 
 class AkademyGradeModel(Base):
     __tablename__ = 'academy_grades'
@@ -242,32 +252,6 @@ async def add_user_tg(data: UserTgAddSchema):
 
         return {'ok': True}
 
-async def get_all_users(): #Только для академика
-    async with new_session() as session:
-        query = select(UserModel).options(
-            selectinload(UserModel.akademy_grade).joinedload(AkademyGradeModel.course),
-            selectinload(UserModel.dean_grade).joinedload(DeanGradeModel.course)
-        )
-        result_sql = await session.execute(query)
-
-        users = result_sql.scalars().all()
-        result = []
-
-        for user in users:
-            sum_akademy_grades = 0.0
-            sum_dean_grade = 0.0
-            for grade in user.akademy_grade:
-                sum_akademy_grades += grade.grade * grade.course.weight
-            for grade in user.dean_grade:
-                sum_dean_grade += grade.grade * grade.course.weight
-
-            result.append({
-                'id': user.id,
-                'user_name': user.name,
-                'grade': sum_akademy_grades + sum_dean_grade
-            })
-
-        return result
 
 async def main():
     await create_database()
@@ -280,8 +264,6 @@ async def main():
     # await add_akademy_grade(AkademyGradeAddSchema(user_id=2, course_id=1, grade=74.000))
     # await add_akademy_grade(AkademyGradeAddSchema(user_id=2, course_id=1, grade=34.540))
     # await add_dean_grade(DeanGradeAddSchema(user_id=1, course_id=1, count_of_retake=4, grade=11.11))
-
-    print(await get_all_users())
 
 if __name__ == '__main__':
     try:
