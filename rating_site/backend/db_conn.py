@@ -314,7 +314,7 @@ async def main():
     # await add_akademy_grade(AkademyGradeAddSchema(user_id=2, course_id=1, grade=34.540))
     # await add_dean_grade(DeanGradeAddSchema(user_id=1, course_id=1, count_of_retake=4, grade=11.11))
 
-    print(await get_all_users())
+    print(await get_users_rating_by_group())
 
 if __name__ == '__main__':
     try:
