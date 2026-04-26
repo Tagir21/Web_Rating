@@ -251,7 +251,8 @@ async def get_users_rating_by_group(group_id=None): #Только для ака�
         query = select(UserModel).options(
             selectinload(UserModel.akademy_grade).joinedload(AkademyGradeModel.course),
             selectinload(UserModel.dean_grade).joinedload(DeanGradeModel.course),
-            joinedload(UserModel.study_group)
+            joinedload(UserModel.study_group),
+            joinedload(UserModel.user_tg).joinedload(UserTg.achievement)
         )
 
         if group_id:
@@ -273,7 +274,7 @@ async def get_users_rating_by_group(group_id=None): #Только для ака�
             result.append({
                 'id': user.id,
                 'user_name': user.name,
-                'science_activity': sum_akademy_grades + sum_dean_grade
+                'study_activity': sum_akademy_grades + sum_dean_grade
             })
 
         return result
