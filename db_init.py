@@ -94,7 +94,7 @@ class Achievement(Base):
     status: Mapped[str] = mapped_column(String(30), default='viewing')
     category: Mapped[str] = mapped_column(String(300))
     grade: Mapped[float] = mapped_column(default=0.0)
-    description: Mapped[str] = mapped_column(String(500), default='', server_default=text(''))
+    description: Mapped[Optional[str]] = mapped_column(String(500), default=None, server_default=text('NULL'))
     file_path: Mapped[str] = mapped_column(String(255))
     file_type: Mapped[str] = mapped_column(String(30))
     created_at: Mapped[int] = mapped_column(
@@ -152,7 +152,7 @@ class AchievementAddSchema(BaseModel):
     status: str
     category: str
     grade: float
-    description: str
+    description: Optional[str] = None
     file_path: str
     file_type: str
 

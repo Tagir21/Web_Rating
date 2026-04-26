@@ -14,6 +14,8 @@ from mysql.connector import connect
 from dotenv import dotenv_values
 import asyncio
 
+from sqlalchemy import Null
+
 from db_init import add_bd_achievement, AchievementAddSchema
 
 from admin import admin_r as admin_router
@@ -100,6 +102,7 @@ class item_selection(StatesGroup):
     confirm_linking = State()
     choosing = State()
     waiting_for_file = State()
+    waiting_for_description = State()
 
 @menu.message(Command('start', 'register'))
 async def command_start_handler(message: Message, state: FSMContext):
@@ -256,7 +259,16 @@ async def done_handler(callback: CallbackQuery, state: FSMContext):
 
 
 @add_achievement.message(item_selection.waiting_for_file, F.photo | F.document)
-async def request_commit(message: Message):
+async def request_commit(message: Message, state: FSMContext):
+    if message.photo:
+        file_id = message.photo[-1].file_id
+        file_type = 'photo'
+    else:
+        file_id = message.document.file_id
+        file_type = 'document'
+
+    await state.update_data(file_id=file_id, file_type=file_type)
+
     builder = InlineKeyboardBuilder()
     builder.button(text='Отправить', callback_data='send')
     builder.button(text='Добавить описание', callback_data='add_description')
@@ -267,23 +279,20 @@ async def request_commit(message: Message):
                          reply_markup=builder.as_markup(resize_keyboard=True))
 
 
-@add_achievement.message(item_selection.waiting_for_file, F.data == 'send')
-async def file_handler(message: Message, state: FSMContext, bot: Bot):
+@add_achievement.callback_query(item_selection.waiting_for_file, F.data == 'send')
+async def file_handler(callback: CallbackQuery, state: FSMContext, bot: Bot):
     data = await state.get_data()
     items = data.get('items', [])
 
-    tg_list = is_user_register(message.from_user.username)
+    file_id = data.get('file_id')
+    file_type = data.get('file_type')
+    description = data.get('description', None)
+
+    tg_list = is_user_register(callback.from_user.username)
     tg_id_from_db = tg_list[0]
 
-    if message.photo:
-        file_id = message.photo[-1].file_id
-        file_type = 'photo'
-    else:
-        file_id = message.document.file_id
-        file_type = 'document'
-
     file_path = await save_file_to_disk(bot, file_id)
-    await state.update_data(file_id = file_id, file_type = file_type)
+
 
     status = 'viewing'
     print(tg_id_from_db)
@@ -292,15 +301,41 @@ async def file_handler(message: Message, state: FSMContext, bot: Bot):
         status=status,
         category=', '.join(items),
         grade = 0.0,
+        description=description,
         file_path=file_path,
         file_type=file_type
     ))
-    await message.answer('Достижение отправлено на проверку')
+    await callback.message.answer('Достижение отправлено на проверку')
     await state.clear()
+    await callback.answer()
 
-@add_achievement.message(item_selection.waiting_for_file, F.data == 'add_description')
-async def send_commit(message: Message):
-    await message.edit_text(text='Введите описание к заявке:')
+@add_achievement.callback_query(item_selection.waiting_for_file, F.data == 'add_description')
+async def send_add_description_message(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(text='Введите описание к заявке:')
+
+    await state.set_state(item_selection.waiting_for_description)
+    await callback.message.edit_text('Введите описание к заявке (до 500 символов)')
+    await callback.answer()
+
+@add_achievement.message(item_selection.waiting_for_description, F.text)
+async def save_description(message: Message, state: FSMContext):
+    description = message.text.strip()
+
+    if len(description) > 500:
+        await message.answer('Описание слищеом длинное. Попробуйте снова')
+        return
+
+    await state.update_data(description=description)
+    await state.set_state(item_selection.waiting_for_file)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text='Отправить', callback_data='send')
+    builder.button(text='Изменить описание', callback_data='add_description')
+    builder.adjust(1)
+
+    await message.answer('Описание сохранено\n'
+                         'Теперь вы можете отправить заявку',
+                         reply_markup=builder.as_markup(resize_keyboard=True))
 
 
 @add_achievement.message(item_selection.waiting_for_file)

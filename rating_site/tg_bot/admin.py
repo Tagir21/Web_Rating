@@ -67,7 +67,7 @@ def get_viewing_requests_count():
 def get_all_viewing_requests():
     conn, cursor = bd_connect()
     cursor.execute('SELECT id, (SELECT tg_name FROM telegram_data WHERE telegram_data.id = user_tg_id),'
-                   ' category, file_path, file_type'
+                   ' category, description, file_path, file_type'
                    ' FROM achievements WHERE status = "viewing"')
     all_viewing_requests = cursor.fetchall()
     conn.close()
@@ -152,11 +152,19 @@ async def send_request(source, state: FSMContext):
     request_id = request[0]
     user_name = request[1]
     categories = request[2]
-    file_path = request[3]
-    file_type = request[4]
+    description = request[3]
+    file_path = request[4]
+    file_type = request[5]
 
-    caption = (f'Достижение от: @{html.bold(user_name)}\n\n'
-               f'{html.bold(categories)}')
+    if description:
+        caption = (f'Достижение от: @{html.bold(user_name)}\n\n'
+                   f'{html.bold(categories)}\n\n'
+                   f'{html.bold('Описание:')}\n'
+                   f'{description}')
+    else:
+        caption = (f'Достижение от: @{html.bold(user_name)}\n\n'
+                   f'{html.bold(categories)}')
+
     await state.update_data(caption=caption)
     if os.path.exists(file_path):
         if file_type == 'photo':
