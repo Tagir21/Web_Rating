@@ -96,7 +96,7 @@ class CourseModel(Base):
     akademy_grade = relationship('AkademyGradeModel', back_populates='course')
     dean_grade = relationship('DeanGradeModel', back_populates='course')
 
-class Achievement(Base):
+class AchievementModel(Base):
     __tablename__ = 'achievements'
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -114,7 +114,7 @@ class Achievement(Base):
 
     user_tg = relationship('UserTg', back_populates='achievement')
 
-class UserTg(Base):
+class UserTgModel(Base):
     __tablename__ = 'telegram_data'
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -226,7 +226,7 @@ async def add_course(data: CourseAddSchema):
 
 async def add_bd_achievement(data: AchievementAddSchema):
     async with new_session() as session:
-        new_achievement = Achievement(
+        new_achievement = AchievementModel(
             user_tg_id=data.user_tg_id,
             status=data.status,
             category=data.category,
@@ -242,7 +242,7 @@ async def add_bd_achievement(data: AchievementAddSchema):
 
 async def add_user_tg(data: UserTgAddSchema):
     async with new_session() as session:
-        new_tg = UserTg(
+        new_tg = UserTgModel(
             user_id=data.user_id,
             is_banned=data.is_banned,
             tg_name=data.tg_name,
