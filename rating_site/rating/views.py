@@ -5,6 +5,8 @@ from django.conf import settings
 from django.http import JsonResponse
 import os
 
+import uuid
+
 def home(request):
     return render(request, 'home.html')
 
@@ -30,31 +32,15 @@ def add_achievement(request):
         # Получаем файлы
         files = request.FILES.getlist('files')
 
-        upload_dir = os.path.join(settings.BASE_DIR, 'static', 'download')
-        
-        # Создаем папку если её нет
-        if not os.path.exists(upload_dir):
-            os.makedirs(upload_dir)
-            print(f"Создана папка: {upload_dir}")
-        
-        print(f"Путь для сохранения: {upload_dir}")
-        print(f"Количество файлов: {len(files)}")
+
         
         saved_files = []
         for file in files:
             try:
-                # Сохраняем каждый файл
-                file_path = os.path.join(upload_dir, file.name)
-                
-                # Если файл с таким именем уже есть, добавляем номер
-                counter = 1
-                original_name = file.name
-                while os.path.exists(file_path):
-                    name, ext = os.path.splitext(original_name)
-                    file.name = f"{name}_{counter}{ext}"
-                    file_path = os.path.join(upload_dir, file.name)
-                    counter += 1
-                
+                ext = file.name.split('.')[-1] if '.' in file.name else 'bin'
+                filename = f'{uuid.uuid4()}.{ext}'
+                file_path = os.path.join('../data', filename)
+
                 # Сохраняем файл
                 with open(file_path, 'wb+') as destination:
                     for chunk in file.chunks():
@@ -79,6 +65,5 @@ def add_achievement(request):
             messages.warning(request, 'Достижение добавлено, но файлы не были сохранены')
         
         return redirect('my_achievements')
-    
-    # players = Player.objects.all().order_by('-rating')
+
     return render(request, 'add_achievement.html')

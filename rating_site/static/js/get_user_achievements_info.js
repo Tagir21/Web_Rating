@@ -1,18 +1,20 @@
 document.addEventListener("DOMContentLoaded", async () => {
+    const login = window.currentUserLogin
     try {
-        const response = await fetch("http://127.0.0.1:8000/get_api_all_users");
+        const response = await fetch(`http://127.0.0.1:8000/get_api_user_achievements_by_login/${encodeURIComponent(login)}`);
         const data = await response.json();
 
-        const table_body = document.getElementById('grades_table_body');
+        const table_body = document.getElementById('achievements_table_body');
 
-        if (data.users && data.users.length > 0) { //Пока что только для академика// Уже нет))
+        if (data.achievements && data.achievements.length > 0) { //Пока что только для академика// Уже нет))
             let html = '';
-            data.users.forEach((user, index) => {
+            data.achievements.forEach((achievement, index) => {
                 html += `
                     <tr>
                         <th scope="row">${index + 1}</th>
-                        <td>${user.user_name}</td>
-                        <td>${user.grade}</td>
+                        <td>${achievement.categories}</td>
+                        <td>${achievement.status}</td>
+                        <td>${achievement.grade}</td>
                     </tr>
                 `;
             });
@@ -20,7 +22,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
             table_body.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center">Нет данных о студенте</td>
+                    <td colspan="7" class="text-center">Нет данных о достижениях</td>
                 </tr>
             `;
         }

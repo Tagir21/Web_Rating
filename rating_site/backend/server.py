@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from db_conn import get_users_rating_by_group, get_user_data_by_login
+from db_conn import get_users_rating_by_group, get_user_data_by_login, get_user_achievements, get_user_activity_info
 
 app = FastAPI()
 
@@ -28,3 +28,15 @@ async def get_api_users_rating_by_group(group_id):
     users_in_group = await get_users_rating_by_group(group_id)
 
     return {'users':users_in_group}
+
+@app.get('/get_api_user_achievements_by_login/{login}')
+async def get_api_user_achievements_by_login(login):
+    achievements = await get_user_achievements(login)
+
+    return {'achievements': achievements}
+
+@app.get('/get_api_users_activity_info_by_login/{login}')
+async def get_api_users_activity_info_by_login(login):
+    user_activity_info = await get_user_activity_info(login)
+
+    return {'user_activity_info': user_activity_info}

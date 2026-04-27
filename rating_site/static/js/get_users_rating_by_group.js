@@ -12,8 +12,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 html += `
                     <tr>
                         <th scope="row">${index + 1}</th>
-                        <td>${user.user_name}</td>
-                        <td>${user.study_activity}</td>
+                        <td><strong>${user.user_name}</strong></td>
+                        <td>${user.grade_group_by_activity.study_activity}</td>
+                        <td>${user.grade_group_by_activity.science_activity}</td>
+                        <td>${user.grade_group_by_activity.social_activity}</td>
+                        <td>${user.grade_group_by_activity.culture_activity}</td>
+                        <td><strong>${user.grade_group_by_activity.general_rating}</strong></td>
                     </tr>
                 `;
             });

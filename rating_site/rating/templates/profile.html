@@ -7,22 +7,22 @@
 <div class="container-fluid py-5">
     <!-- Профиль в серой закрашенной рамке -->
     <div class="p-4 mb-4 rounded-3" style="background-color: #faf9fc;">
-        <p class="fs-3 fw-bold mb-3">Профиль</p>
+        <p class="fs-5 fw-bold mb-3">Профиль</p>
 
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div style="display: flex; flex-direction: column;">
-                <strong class="fs-4">ФИО</strong>
-                <span id="user_fio" class="fs-4">Загрузка...</span>
+                <strong class="fs-5">ФИО</strong>
+                <span id="user_fio" class="fs-5">Загрузка...</span>
             </div>
             <div style="display: flex; flex-direction: column;">
-                <strong class="fs-4">Студенческая группа</strong>
-                <span id="user_group" class="fs-4">Загрузка...</span>
+                <strong class="fs-5">Студенческая группа</strong>
+                <span id="user_group" class="fs-5">Загрузка...</span>
             </div>
         </div>
         
         <div style="display: flex; flex-direction: column;">
-            <strong class="fs-4">Связанные telegram</strong>
-            <span id="linked_telegrams" class="fs-4">Загрузка...</span>
+            <strong class="fs-5">Связанные telegram</strong>
+            <span id="linked_telegrams" class="fs-5">Загрузка...</span>
         </div>
     </div>
     <script>
@@ -31,19 +31,19 @@
     <script src="{% static 'js/get_user_info.js' %}"></script>
 </div>
 <div class="rating-container">
-    <h1 class="text-center mb-4">Таблица рейтинга студентов</h1>
+    <h1 id="table_header" class="text-center mb-4">Таблица рейтинга студентов</h1>
 
     <div class="table-responsive" id="grade_container">
         <table class="table table-striped table-hover">
             <thead class="table-dark">
                 <tr>
-                    <th scope="col">#</th>
+                    <th scope="col" class="fw-bold">#</th>
                     <th scope="col">Имя </th>
                     <th scope="col">Учебная активность</th>
                     <th scope="col">Научная активность</th>
                     <th scope="col">Социальная активность</th>
                     <th scope="col">Культурно досуговая активность</th>
-                    <th scope="col">Общий рейтинг</th>
+                    <th scope="col" class="fw-bold">Общий рейтинг</th>
                 </tr>
             </thead>
             <tbody id="grades_table_body">
