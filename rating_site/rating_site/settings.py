@@ -27,7 +27,6 @@ ALLOWED_HOSTS = []
 AUTH_USER_MODEL = 'rating.CustomUser'
 AUTHENTICATION_BACKENDS = [
     'rating.backends.CustomAuthBackend',
-    'django.contrib.auth.backends.ModelBackend',
 ]
 
 LOGIN_REDIRECT_URL = '/'

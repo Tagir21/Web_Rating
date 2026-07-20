@@ -33,3 +33,5 @@ document.addEventListener("DOMContentLoaded", async () => {
         `;
     }
 });
+
+//Убрана из использования

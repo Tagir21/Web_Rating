@@ -1,8 +1,6 @@
 
 import os
 import sys
-# pip3 freeze > huy.txt   чтобы загрузить все библиотеки которые исопользуются
-
 
 def main():
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'rating_site.settings')

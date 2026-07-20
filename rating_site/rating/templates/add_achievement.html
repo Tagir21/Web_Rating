@@ -16,7 +16,7 @@
             <!-- Форма добавления достижения -->
             <form method="post" enctype="multipart/form-data" id="achievementForm" action="{% url 'add_achievement' %}">
                 {% csrf_token %}
-                
+                <input type="hidden" name="user_tg_id" id="selectedUserTgId">
                 <!-- Карточка с категориями -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-body p-4">
@@ -81,15 +81,15 @@
                 <!-- Прикрепить файл -->
                 <div class="mb-4">
                     <label class="form-label fw-bold fs-5">Прикрепить файл</label>
-                    <input type="file" class="form-control" name="files" id="fileInput" 
+                    <input type="file" class="form-control" name="file" id="fileInput"
                            multiple accept=".pdf,.doc,.docx,.jpg,.png,.jpeg">
-                    <div class="form-text text-muted">Поддерживаемые форматы: PDF, DOC, DOCX, JPG, PNG. Можно выбрать несколько файлов.</div>
+                    <div class="form-text text-muted">Поддерживаемые форматы: PDF, DOC, DOCX, JPG, PNG. Прикрепите только один файл.</div>
                 </div>
                 
                 <!-- Сюда фото или файл прикрепляются (область предпросмотра) -->
                 <div class="mb-4" id="filePreviewArea">
                     <div class="alert alert-secondary text-center" id="emptyPreviewMsg">
-                        📁 Здесь будут отображаться прикрепленные файлы
+                        📁 Здесь будет отображаться прикрепленный файл
                     </div>
                     <div id="fileList" class="d-flex flex-wrap gap-2"></div>
                 </div>
@@ -104,6 +104,34 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="telegramSelectModal" tabindex="-1" aria-labelledby="telegramSelectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 14px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="telegramSelectModalLabel">Выберите нужный Telegram-аккаунт</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+
+            <div class="modal-body">
+                <p class="mb-3">
+                    К вашему профилю привязано несколько Telegram-аккаунтов. Выберите, к какому аккаунту добавить достижение.
+                </p>
+
+                <div id="telegramAccountsList" class="list-group"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmTelegramBtn">
+                    Продолжить
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -236,14 +264,115 @@
         });
     }
     
-    // Валидация перед отправкой
-    document.getElementById('achievementForm').addEventListener('submit', function(e) {
-        const selectedCategories = document.querySelectorAll('.category-checkbox:checked');
-        if (selectedCategories.length === 0) {
-            e.preventDefault();
-            alert('Пожалуйста, выберите хотя бы одну категорию достижения');
+// Валидация перед отправкой
+let telegramAlreadySelected = false;
+let selectedTelegramId = null;
+
+document.getElementById('achievementForm').addEventListener('submit', async function(e) {
+    const form = this;
+    const selectedCategories = document.querySelectorAll('.category-checkbox:checked');
+    const fileInput = document.getElementById('fileInput');
+    const selectedUserTgIdInput = document.getElementById('selectedUserTgId');
+
+    if (selectedCategories.length === 0) {
+        e.preventDefault();
+        alert('Пожалуйста, выберите хотя бы одну категорию достижения');
+        return;
+    }
+
+    if (fileInput.files.length === 0) {
+        e.preventDefault();
+        alert('Пожалуйста, прикрепите хотя бы один файл');
+        return;
+    }
+
+    if (telegramAlreadySelected) {
+        return;
+    }
+
+    e.preventDefault();
+
+    const login = "{{ request.user.login|escapejs }}";
+
+    try {
+        const response = await fetch(`http://127.0.0.1:8000/get_api_users_tg_accounts_by_login/${login}`);
+        const data = await response.json();
+
+        if (!data.ok) {
+            alert(data.error || 'Ошибка при получении Telegram-аккаунтов');
             return;
         }
+
+        const telegramAccounts = data.telegram_accounts;
+
+        if (telegramAccounts.length === 0) {
+            alert('К вашему профилю не привязан Telegram-аккаунт');
+            return;
+        }
+
+        if (telegramAccounts.length === 1) {
+            selectedUserTgIdInput.value = telegramAccounts[0].id;
+            telegramAlreadySelected = true;
+            form.submit();
+            return;
+        }
+
+        showTelegramSelectModal(telegramAccounts, form);
+
+    } catch (error) {
+        console.error(error);
+        alert('Не удалось получить список Telegram-аккаунтов');
+    }
+});
+
+function showTelegramSelectModal(telegramAccounts, form) {
+    const list = document.getElementById('telegramAccountsList');
+    const selectedUserTgIdInput = document.getElementById('selectedUserTgId');
+
+    list.innerHTML = '';
+    selectedTelegramId = null;
+
+    telegramAccounts.forEach((account, index) => {
+        const item = document.createElement('label');
+        item.className = 'list-group-item d-flex align-items-center gap-2';
+        item.style.cursor = 'pointer';
+
+        item.innerHTML = `
+            <input class="form-check-input me-2" type="radio" name="telegram_choice" value="${account.id}">
+            <span>${account.tg_name}</span>
+        `;
+
+        list.appendChild(item);
+
+        if (index === 0) {
+            const radio = item.querySelector('input');
+            radio.checked = true;
+            selectedTelegramId = account.id;
+        }
     });
+
+    list.querySelectorAll('input[name="telegram_choice"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            selectedTelegramId = this.value;
+        });
+    });
+
+    const modalElement = document.getElementById('telegramSelectModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    document.getElementById('confirmTelegramBtn').onclick = function() {
+        if (!selectedTelegramId) {
+            alert('Выберите Telegram-аккаунт');
+            return;
+        }
+
+        selectedUserTgIdInput.value = selectedTelegramId;
+        telegramAlreadySelected = true;
+        modal.hide();
+        form.submit();
+    };
+
+    modal.show();
+}
 </script>
 {% endblock %}

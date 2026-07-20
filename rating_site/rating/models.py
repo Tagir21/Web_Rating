@@ -16,6 +16,7 @@ class CustomUser(AbstractBaseUser):
     study_group_id = models.IntegerField()
     is_login = models.IntegerField()
 
+    is_admin = models.IntegerField(default=0, db_column='is_admin')
     last_event = models.IntegerField(blank=True, null=True, db_column='last_event')
 
     USERNAME_FIELD = 'login'
