@@ -13,10 +13,6 @@
         <p class="fs-5 mb-2">   Культурно досуговая активность:</strong> <span id="user_culture_activity"><strong>Загрузка...</strong></span></p>
         
     </div>
-    <script>
-        window.currentUserLogin = "{{ user.login|escapejs }}";
-    </script>
-    <script src="{% static 'js/get_user_activity_info.js' %}"></script>
 </div>
 <div class="rating-container">
     <h1 class="text-center mb-4">Мои достижения</h1>
@@ -30,7 +26,6 @@
                     <th scope="col">Статус</th>
                     <th scope="col">Балл</th>
                     <th scope="col">Балл с учетом веса</th>
-                    
                 </tr>
             </thead>
             <tbody id="achievements_table_body">
@@ -41,7 +36,6 @@
             </tbody>
         </table>
     </div>
-    <script src="{% static 'js/get_user_achievements_info.js' %}"></script>
     <li class="nav-item" style="list-style-type: none;">
         <a href="{% url 'add_achievement' %}" class="btn btn-primary" aria-current="page">Добавить Достижение</a>
     </li>
@@ -52,4 +46,10 @@
         {% comment %} Можно добавить кнопки для сортировки или других действий {% endcomment %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.currentUserLogin = "{{ user.login|escapejs }}";</script>
+<script src="{% static 'js/get_user_activity_info.js' %}"></script>
+<script src="{% static 'js/get_user_achievements_info.js' %}"></script>
 {% endblock %}

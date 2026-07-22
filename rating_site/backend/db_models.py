@@ -1,3 +1,4 @@
+from sqlalchemy.dialects.mssql import JSON
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -95,7 +96,7 @@ class AchievementModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_tg_id: Mapped[int] = mapped_column(ForeignKey('telegram_data.id'))
     status: Mapped[str] = mapped_column(String(30), default='viewing')
-    category_id: Mapped[List[int]] = mapped_column(ForeignKey('category_data.id'))
+    category_id: Mapped[List[int]] = mapped_column(JSON, nullable=False)
     grade: Mapped[float] = mapped_column(default=0.0)
     description: Mapped[Optional[str]] = mapped_column(String(500), default=None, server_default=text('NULL'))
     file_path: Mapped[str] = mapped_column(String(255))
@@ -106,7 +107,6 @@ class AchievementModel(Base):
     )
 
     user_tg = relationship('UserTgModel', back_populates='achievement')
-    category = relationship('CategoryDataModel', back_populates='achievement')
 
 class UserTgModel(Base):
     __tablename__ = 'telegram_data'
@@ -126,6 +126,4 @@ class CategoryDataModel(Base):
     title: Mapped[str] = mapped_column(String(255))
     alias: Mapped[str] = mapped_column(String(255))
     weight: Mapped[int] = mapped_column(default=1)
-
-    achievement = relationship('AchievementModel', back_populates='category')
 

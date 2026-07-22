@@ -1,12 +1,19 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
-from db_models import Base
-from db_create import create_database
+from rating_site.backend.db_models import Base
+from rating_site.backend.db_create import create_database
 
 import asyncio
 
-#For local bd
-engine = create_async_engine('mysql+asyncmy://root:1234@localhost/grades_db')
+from rating_site.env_loader import (
+    db_username,
+    db_password,
+    db_hostname,
+    db_name,
+    db_port,
+)
+
+engine = create_async_engine(f'mysql+asyncmy://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_name}')
 
 new_session = async_sessionmaker(engine, expire_on_commit=False)
 

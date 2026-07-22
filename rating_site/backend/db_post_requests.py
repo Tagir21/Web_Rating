@@ -1,15 +1,15 @@
-from schems import (
+from rating_site.backend.schems import (
     AkademyGradeAddSchema,
     DeanGradeAddSchema,
     UserAddSchema,
     CourseAddSchema,
     AchievementAddSchema,
     WebAchievementAddSchema,
-    UserTgAddSchema,
+    UserTgAddSchema, AchievementFileSchema,
 
 )
 
-from db_models import (
+from rating_site.backend.db_models import (
     AkademyGradeModel,
     DeanGradeModel,
     UserModel,
@@ -18,15 +18,15 @@ from db_models import (
     UserTgModel
 )
 
-from db_get_requests import (
+from rating_site.backend.db_get_requests import (
     get_category_data,
 )
 
+from rating_site.backend.maps import CATEGORY_MAP
+
+from rating_site.backend.db_conn import new_session
+
 from sqlalchemy import select
-
-from maps import CATEGORY_MAP
-
-from db_conn import new_session
 
 async def add_akademy_grade(data: AkademyGradeAddSchema):
     async with new_session() as session:
@@ -86,6 +86,8 @@ async def add_bd_achievement(data: AchievementAddSchema):
             user_tg_id=data.user_tg_id,
             status=data.status,
             category_id=data.category_id,
+            grade=data.grade,
+            description=data.description,
             file_path=data.file_info.file_path,
             file_type=data.file_info.file_type
         )
@@ -122,18 +124,17 @@ async def add_web_achievement(data: WebAchievementAddSchema):
 
             category_ids_list.append(category_id)
 
-        new_achievement = AchievementModel(
+        await add_bd_achievement(AchievementAddSchema(
             user_tg_id = data.user_tg_id,
-            status = 'viewing',
-            category_id = tuple(category_ids_list),
-            grade = 0.0,
-            description = data.description,
-            file_path = data.file_info.file_path,
-            file_type = data.file_info.file_type,
-        )
-
-        session.add(new_achievement)
-        await session.commit()
+            status='viewing',
+            category_id = category_ids_list,
+            grade=0.0,
+            description=data.description,
+            file_info = AchievementFileSchema(
+                file_path = data.file_info.file_path,
+                file_type = data.file_info.file_type
+            ),
+        ))
 
         return {'ok': True}
 

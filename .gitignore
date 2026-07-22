@@ -1,13 +1,19 @@
+.env
+.env.*
+!.env.example
+
 .idea/
 *.iml
 *.xml
 
 __pycache__/
+*.py[cod]
 *.pyc
 
-migrations/
+.coverage
+htmlcov/
+.pytest_cache/
 
-__init__.py
-
-.idea/shelf/
-.idea/workspace.xml
+*.sqlite3
+data/
+media/

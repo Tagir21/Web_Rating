@@ -13,11 +13,22 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 
+from rating_site.env_loader import (
+    secret_key,
+    api_base_url,
+    db_hostname,
+    db_username,
+    db_password,
+    db_port,
+    db_name,
+)
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-i5@$92_n591syhhfn=lkizf^^-0btsr2)gvc&w#_oc3v9t^l%x'
+SECRET_KEY = secret_key
+API_BASE_URL = api_base_url
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -26,7 +37,7 @@ ALLOWED_HOSTS = []
 
 AUTH_USER_MODEL = 'rating.CustomUser'
 AUTHENTICATION_BACKENDS = [
-    'rating.backends.CustomAuthBackend',
+    'rating_site.rating.backends.CustomAuthBackend',
 ]
 
 LOGIN_REDIRECT_URL = '/'
@@ -41,7 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rating.apps.RatingConfig',
+    'rating_site.rating.apps.RatingConfig',
 ]
 
 MIDDLEWARE = [
@@ -54,7 +65,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'rating_site.urls'
+ROOT_URLCONF = 'rating_site.rating_site.urls'
 
 TEMPLATES = [
     {
@@ -66,12 +77,13 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'rating_site.rating.context_processors.frontend_settings',
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'rating_site.wsgi.application'
+WSGI_APPLICATION = 'rating_site.rating_site.wsgi.application'
 
 # Database ТОЛЬКО ДЛЯ ЛОКАЛЬНОЙ БД
 DATABASES = {
@@ -81,11 +93,11 @@ DATABASES = {
     },
     'mysql_db': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'grades_db',
-        'USER': 'root',
-        'PASSWORD': '1234',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': f'{db_name}',
+        'USER': f'{db_username}',
+        'PASSWORD': f'{db_password}',
+        'HOST': f'{db_hostname}',
+        'PORT': f'{db_port}',
     }
 }
 
@@ -121,7 +133,7 @@ STATICFILES_DIRS = [
 ]
 
 # Media files (загруженные файлы)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = '/data/'
+MEDIA_ROOT = BASE_DIR.parent / 'data'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

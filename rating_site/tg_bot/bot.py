@@ -1,101 +1,62 @@
 from aiogram import Dispatcher, Bot, html, F, Router
-from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardBuilder
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, FSInputFile
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 
-import os
 import uuid
-from mysql.connector import connect
-from dotenv import dotenv_values
+
 import asyncio
 
-from sqlalchemy import Null
+from rating_site.backend.db_post_requests import add_bd_achievement
+from rating_site.backend.schems import (
+    AchievementAddSchema,
+    AchievementFileSchema,
+)
+from rating_site.backend.db_get_requests import get_category_data
 
-from db_init import add_bd_achievement, AchievementAddSchema
+from rating_site.tg_bot.admin import admin_r as admin_router
 
-from admin import admin_r as admin_router
+from rating_site.env_loader import (
+    token,
+    proxy_url
+)
 
+from rating_site.tg_bot.sql_get_func import (
+    is_user_register,
+    is_valid_login,
+    linked_telegrams,
+)
+from rating_site.tg_bot.sql_post_func import (
+    add_tg_user_name_in_db,
+)
 
-##########################################Добавить обработку когда несколько телеграммов к одному login в выбором да/нет ///ready
-###########Добавить баны // ready
+from pathlib import Path
+
 ##########Добавить очистку из telegram_data по user_id = login
-
-# Получение токена бота из переменной окружения .env
-token = dotenv_values('.env')['BOT_TOKEN']
-admin_id = dotenv_values('.env')['ADMIN_ID']
 
 menu = Router()
 add_achievement = Router()
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = BASE_DIR / 'data'
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 async def save_file_to_disk(bot, file_id):
     file = await bot.get_file(file_id)
     ext = file.file_path.split('.')[-1] if '.' in file.file_path else 'bin'
     filename = f'{uuid.uuid4()}.{ext}'
-    file_path = os.path.join('../../data', filename)
 
-    print(file_path)
-    await bot.download_file(file.file_path, destination=file_path)
-    return file_path
+    absolute_file_path = DATA_DIR / filename
+    relative_file_path = Path("data") / filename
 
-def is_user_register(user_name: str):
-    conn = connect(host='localhost',
-                   port=3306,
-                   username='root',
-                   password='1234',
-                   database='grades_db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, is_banned'
-                   ' FROM telegram_data'
-                   ' WHERE tg_name = %s', (user_name,))
-    user_data = cursor.fetchone()
-    conn.close()
+    await bot.download_file(file.file_path, destination=absolute_file_path)
 
-    return user_data
-
-def is_valid_login(login: str):
-    conn = connect(host='localhost',
-                   port=3306,
-                   username='root',
-                   password='1234',
-                   database='grades_db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, name FROM users WHERE login = %s', (login,))
-    user_id = cursor.fetchone()
-
-    return user_id
-
-def linked_telegrams(user_id: int):
-    conn = connect(host='localhost',
-                   port=3306,
-                   username='root',
-                   password='1234',
-                   database='grades_db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT tg_name'
-                   ' FROM telegram_data'
-                   ' WHERE user_id = %s', (user_id,))
-    telegrams = cursor.fetchall()
-    conn.close()
-
-    return telegrams
-
-def add_tg_user_name_in_db(tg_user_name: str, user_id: int):
-    conn = connect(host='localhost',
-                   port=3306,
-                   username='root',
-                   password='1234',
-                   database='grades_db')
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO telegram_data (user_id, tg_name)'
-                   ' VALUES'
-                   ' (%s, %s)', (user_id, tg_user_name))
-    conn.commit()
-    conn.close()
+    return relative_file_path
 
 class item_selection(StatesGroup):
     enter_login = State()
@@ -114,10 +75,8 @@ async def command_start_handler(message: Message, state: FSMContext):
         if is_banned:
             await message.answer('Вы были заблокированы администратором')
             return
-        print(f'Я есть, но {tg_list}')
         await show_main_menu(message)
     else:
-        print(f'Меня нет, но {tg_list}')
         await state.set_state(item_selection.enter_login)
         await message.answer(
             'Для начала работы введите ваш логин из академика',
@@ -293,17 +252,24 @@ async def file_handler(callback: CallbackQuery, state: FSMContext, bot: Bot):
 
     file_path = await save_file_to_disk(bot, file_id)
 
+    category_data_map = await get_category_data()
+    category_ids = []
 
     status = 'viewing'
-    print(tg_id_from_db)
+    for category in items:
+        category_id = (category_data_map.get(category))['id']
+        category_ids.append(category_id)
+
     await add_bd_achievement(AchievementAddSchema(
         user_tg_id=tg_id_from_db,
         status=status,
-        category=', '.join(items),
+        category_id=category_ids,
         grade = 0.0,
         description=description,
-        file_path=file_path,
-        file_type=file_type
+        file_info=AchievementFileSchema(
+            file_type=file_type,
+            file_path=file_path.as_posix(),
+        )
     ))
     await callback.message.answer('Достижение отправлено на проверку')
     await state.clear()
@@ -344,8 +310,7 @@ async def invalid_file_handler(message: Message):
 
 async def main():
     #Настройка прокси сервера для корректной работы с телеграммом
-    proxy_url = 'http://127.0.0.1:10801'
-    session = AiohttpSession(proxy=proxy_url)
+    session = (AiohttpSession(proxy=proxy_url) if proxy_url else AiohttpSession())
 
     bot = Bot(token=token, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 

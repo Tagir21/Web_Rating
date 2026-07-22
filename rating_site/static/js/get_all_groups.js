@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
     const container = document.getElementById('groupButtons');
     try {
-        const response = await fetch("http://127.0.0.1:8000/get_api_all_groups", {
+        const response = await fetch(`${window.API_BASE_URL}/get_api_all_groups`, {
             headers: {
                 Accept: "application/json",
             },
@@ -27,6 +27,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 button.dataset.group = group.name;
                 button.dataset.groupId = group.id;
                 button.textContent = group.name;
+                button.dataset.allGroups = "false";
                 button.setAttribute("aria-pressed", "false");
 
                 if (index === 0) {
@@ -36,6 +37,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 container.appendChild(button);
             });
+
+            const allGroupsButton = document.createElement("button");
+            allGroupsButton.type = "button";
+            allGroupsButton.className = "btn group-button";
+            allGroupsButton.textContent = "Все";
+
+            allGroupsButton.dataset.group = "Все";
+            allGroupsButton.dataset.groupId = "all";
+            allGroupsButton.dataset.allGroups = "true";
+            allGroupsButton.setAttribute("aria-pressed", "false");
+
+            container.appendChild(allGroupsButton);
+
 
             document.dispatchEvent(
                 new CustomEvent("groups:loaded", {

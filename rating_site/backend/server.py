@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from db_get_requests import (
+from rating_site.backend.db_get_requests import (
     get_users_rating_by_group,
     get_user_data_by_login,
     get_user_achievements,
@@ -11,11 +11,11 @@ from db_get_requests import (
     get_category_data,
 )
 
-from db_post_requests import (
+from rating_site.backend.db_post_requests import (
     add_web_achievement,
 )
 
-from schems import (
+from rating_site.backend.schems import (
     WebAchievementAddSchema,
 )
 
@@ -28,12 +28,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get('/get_api_all_users')
-async def get_all_api_users():
-    all_users = await get_users_rating_by_group()
-    print("Я работаю, всё ок")
-    return {'users': all_users}
-
 @app.get('/get_api_user_data/{login}')
 async def get_api_user_data_by_login(login):
     user_data = await get_user_data_by_login(login)
@@ -42,9 +36,12 @@ async def get_api_user_data_by_login(login):
 
 @app.get('/get_api_users_rating_by_group/{group_id}')
 async def get_api_users_rating_by_group(group_id):
-    users_in_group = await get_users_rating_by_group(group_id)
+    if not group_id.isdigit():
+        users = await get_users_rating_by_group()
+    else:
+        users = await get_users_rating_by_group(group_id)
 
-    return {'users':users_in_group}
+    return {'users':users}
 
 # @app.get('/get_api_admin_users_rating_by_group/{group_id}')
 # async def get_api_admin_users_rating_by_group(group_id):

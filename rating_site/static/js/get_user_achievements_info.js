@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
     const login = window.currentUserLogin
     try {
-        const response = await fetch(`http://127.0.0.1:8000/get_api_user_achievements_by_login/${encodeURIComponent(login)}`);
+        const response = await fetch(`${window.API_BASE_URL}/get_api_user_achievements_by_login/${encodeURIComponent(login)}`);
         const data = await response.json();
 
         const table_body = document.getElementById('achievements_table_body');
@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         <td>${achievement.categories}</td>
                         <td>${achievement.status}</td>
                         <td>${achievement.grade}</td>
+                        <td>${achievement.weighted_grade}</td>
                     </tr>
                 `;
             });
@@ -28,7 +29,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     } catch (error) {
         console.error("Ошибка загрузки:", error);
-        document.getElementById("grades_table_body").innerHTML = `
+        document.getElementById("achievements_table_body").innerHTML = `
             <tr>
                 <td colspan="7" class="text-center">Ошибка загрузки данных</td>
             </tr>

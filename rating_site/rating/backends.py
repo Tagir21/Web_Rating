@@ -1,5 +1,5 @@
 from django.contrib.auth.backends import BaseBackend
-from .models import CustomUser
+from rating_site.rating.models import CustomUser
 
 class CustomAuthBackend(BaseBackend):
     def authenticate(self, request, username=None, password=None, **kwargs):

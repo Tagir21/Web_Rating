@@ -1,100 +1,39 @@
-from aiogram import Dispatcher, Bot, html, F, Router
-from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardBuilder
+import json
+
+from aiogram import html, F, Router
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from aiogram.client.default import DefaultBotProperties
-from aiogram.client.session.aiohttp import AiohttpSession
-from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, FSInputFile
-from mysql.connector import connect
+from aiogram.types import Message, CallbackQuery, FSInputFile
 
 import os
 
-from dotenv import dotenv_values
-import asyncio
+from rating_site.env_loader import admin_id
 
-admin_id = int(dotenv_values('.env')['ADMIN_ID'])
-db_hostname = dotenv_values('.env')['DB_HOSTNAME']
-db_port = int(dotenv_values('.env')['DB_PORT'])
-db_username = dotenv_values('.env')['DB_USERNAME']
-db_password = dotenv_values('.env')['DB_PASSWORD']
-db_name = dotenv_values('.env')['DB_NAME']
+from rating_site.tg_bot.sql_get_func import (
+    get_viewing_requests_count,
+    get_all_viewing_requests,
+)
+
+from rating_site.tg_bot.sql_post_func import (
+    update_request,
+    ban_user_by_tg_user_name
+)
+
+from rating_site.tg_bot.keyboards import admin_keyboard, request_keyboard
+
+from rating_site.backend.db_get_requests import get_category_data
 
 admin_r = Router()
+
+admin_id = int(admin_id)
+
 
 class AdminStates(StatesGroup):
     reviewing = State()
     choosing = State()
     rate = State()
-
-def admin_keyboard():
-    builder = InlineKeyboardBuilder()
-    builder.button(text='Просмотреть', callback_data='look')
-
-    return builder
-
-def request_keyboard(request_id):
-    builder = InlineKeyboardBuilder()
-    builder.button(text='👍', callback_data=f'approve_{request_id}')
-    builder.button(text='◀️', callback_data=f'back_{request_id}')
-    builder.button(text='👎', callback_data=f'deny_{request_id}')
-    builder.button(text='Заблокировать пользователя', callback_data=f'ban_{request_id}')
-    builder.adjust(3)
-
-    return builder
-
-def bd_connect():
-    conn = connect(host=db_hostname,
-                   port=db_port,
-                   username=db_username,
-                   password=db_password,
-                   database=db_name)
-    cursor = conn.cursor()
-
-    return conn, cursor
-
-def get_viewing_requests_count():
-    conn, cursor = bd_connect()
-    cursor.execute(
-        'SELECT COUNT(*) AS count FROM achievements WHERE status = "viewing"'
-    )
-    total_count = cursor.fetchone()[0]
-    conn.close()
-
-    return total_count
-
-def get_all_viewing_requests():
-    conn, cursor = bd_connect()
-    cursor.execute('SELECT id, (SELECT tg_name FROM telegram_data WHERE telegram_data.id = user_tg_id),'
-                   ' category, description, file_path, file_type'
-                   ' FROM achievements WHERE status = "viewing"')
-    all_viewing_requests = cursor.fetchall()
-    conn.close()
-
-    return all_viewing_requests
-
-def update_request(request_id, status, category=None, grade=None):
-    conn, cursor = bd_connect()
-    if grade and category:
-        cursor.execute('UPDATE achievements SET status = %s, category = %s, grade = %s WHERE id = %s',
-                       (status, category, grade, request_id))
-    else:
-        cursor.execute('UPDATE achievements SET status = %s WHERE id = %s',
-                       (status, request_id))
-    conn.commit()
-    conn.close()
-
-
-def ban_user_by_tg_user_name(request_id):
-    conn, cursor = bd_connect()
-    cursor.execute('UPDATE telegram_data'
-                   ' SET is_banned = 1'
-                   ' WHERE id = (SELECT user_tg_id'
-                   '             FROM achievements'
-                   '             WHERE id = %s)', (request_id,))
-    conn.commit()
-    conn.close()
 
 async def admin_panel(source):
     if isinstance(source, CallbackQuery):
@@ -156,14 +95,25 @@ async def send_request(source, state: FSMContext):
     file_path = request[4]
     file_type = request[5]
 
+    categories = json.loads(categories)
+
+    category_data_map = await get_category_data()
+    category_list = []
+
+    for category, category_data in category_data_map.items():
+        if category_data['id'] in categories:
+            category_list.append(category)
+
+    category_str = ', '.join(category_list)
+
     if description:
         caption = (f'Достижение от: @{html.bold(user_name)}\n\n'
-                   f'{html.bold(categories)}\n\n'
+                   f'{html.bold(category_str)}\n\n'
                    f'{html.bold('Описание:')}\n'
                    f'{description}')
     else:
         caption = (f'Достижение от: @{html.bold(user_name)}\n\n'
-                   f'{html.bold(categories)}')
+                   f'{html.bold(category_str)}')
 
     await state.update_data(caption=caption)
     if os.path.exists(file_path):
@@ -187,13 +137,10 @@ async def send_request(source, state: FSMContext):
 @admin_r.callback_query(AdminStates.reviewing, F.data.startswith('approve'))
 async def approve_request(callback: CallbackQuery, state: FSMContext):
     request_id = int(callback.data.split('_')[1])
-    # update_request_status(request_id, 'approved')
-    # await callback.answer('Заявка одобрена')
 
     await state.update_data(temp_request_id=request_id)
     await state.set_state(AdminStates.choosing)
     await type_keyboard_show(callback, state)
-    print(request_id)
 
 async def type_keyboard_show(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
@@ -229,7 +176,7 @@ async def type_choosing(callback: CallbackQuery, state: FSMContext):
 @admin_r.callback_query(AdminStates.reviewing, F.data.startswith('deny'))
 async def deny_request(callback: CallbackQuery, state: FSMContext):
     request_id = int(callback.data.split('_')[1])
-    update_request(request_id, 'deny')
+    await update_request(request_id, 'deny')
     await callback.answer('Заявка отклонена')
 
     data = await state.get_data()
@@ -250,7 +197,7 @@ async def rate_process(message: Message, state: FSMContext):
     request_id = data['temp_request_id']
     request_type = data['temp_request_type']
 
-    update_request(request_id, status='approve', category=request_type, grade=grade)
+    await update_request(request_id, status='approve', category=request_type, grade=grade)
     await message.answer(f'Оценка {grade} выставлена. Заявка одобрена')
 
     await state.update_data(index=data['index'] + 1)

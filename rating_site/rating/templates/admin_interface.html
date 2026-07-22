@@ -2,7 +2,12 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid py-5 admin-interface" id="adminInterface">
+<div class="container-fluid py-5 admin-interface" id="adminInterface" data-save-weights-url="{% url 'save_category_weights' %}">
+
+    <form id="csrfTokenForm" class="d-none">
+        {% csrf_token %}
+    </form>
+
     <h1 class="text-center mb-4">Админский интерфейс</h1>
 
     <div class="row g-4 mb-4">
@@ -48,7 +53,7 @@
         </div>
 
         <div class="row g-3">
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-3 weight-field">
                 <label for="academicWeight" class="form-label fw-semibold">Учебная активность</label>
                 <input type="number"
                        class="form-control weight-input"
@@ -58,7 +63,7 @@
                        value="{{ weights.academic|default:'5' }}">
             </div>
 
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-3 weight-field">
                 <label for="scienceWeight" class="form-label fw-semibold">Научная активность</label>
                 <input type="number"
                        class="form-control weight-input"
@@ -68,7 +73,7 @@
                        value="{{ weights.science|default:'10' }}">
             </div>
 
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-3 weight-field">
                 <label for="socialWeight" class="form-label fw-semibold">Социальная активность</label>
                 <input type="number"
                        class="form-control weight-input"
@@ -78,7 +83,7 @@
                        value="{{ weights.social|default:'10' }}">
             </div>
 
-            <div class="col-md-6 col-xl-3">
+            <div class="col-md-6 col-xl-3 weight-field">
                 <label for="culturalWeight" class="form-label fw-semibold">Культурно-досуговая активность</label>
                 <input type="number"
                        class="form-control weight-input"
@@ -126,360 +131,10 @@
 
 <div class="admin-toast" id="adminToast" role="status" aria-live="polite"></div>
 
-<style>
-    .admin-interface {
-        color: #212529;
-    }
+<link rel="stylesheet" href="{% static 'css/admin_interface.css' %}">
+{% endblock %}
 
-    .admin-panel,
-    .admin-info-card {
-        background-color: #faf9fc;
-        border: 1px solid #e2e3e5;
-        border-radius: 12px;
-        padding: 24px;
-    }
-
-    .admin-info-card {
-        min-height: 100%;
-        display: flex;
-        flex-direction: column;
-        border-color: #dee2e6;
-        color: #212529;
-        cursor: pointer;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    }
-
-    .admin-info-card:hover,
-    .admin-info-card:focus-visible {
-        border-color: #0d6efd;
-        box-shadow: 0 5px 15px rgba(13, 110, 253, 0.12);
-        transform: translateY(-2px);
-        outline: none;
-    }
-
-    .admin-card-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-    }
-
-    .admin-card-value {
-        margin-top: 12px;
-        font-size: 2.8rem;
-        line-height: 1;
-        font-weight: 700;
-        color: #0d6efd;
-    }
-
-    .admin-card-caption {
-        margin-top: 8px;
-        color: #6c757d;
-    }
-
-    .group-button {
-        border: 1px solid #ced4da;
-        background-color: #ffffff;
-        color: #212529;
-        border-radius: 8px;
-        padding: 9px 16px;
-        font-weight: 500;
-        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-    }
-
-    .group-button:hover {
-        border-color: #0d6efd;
-        color: #0d6efd;
-    }
-
-    .group-button.active {
-        border-color: #0d6efd;
-        background-color: #0d6efd;
-        color: #ffffff;
-    }
-
-    .weight-input {
-        min-height: 46px;
-        border-radius: 8px;
-    }
-
-    .weight-input:focus {
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
-    }
-
-    .selected-group-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 7px 13px;
-        border-radius: 20px;
-        background-color: #e7f1ff;
-        color: #0d6efd;
-        font-weight: 600;
-    }
-
-    #adminRatingTable {
-        min-width: 1050px;
-    }
-
-    #adminRatingTable thead th {
-        vertical-align: middle;
-        white-space: normal;
-    }
-
-    #adminRatingTable thead th.sortable {
-        cursor: pointer;
-        user-select: none;
-    }
-
-    #adminRatingTable thead th.sortable::after {
-        content: " ↕";
-        color: #adb5bd;
-        font-size: 0.8rem;
-    }
-
-    #adminRatingTable tbody tr[data-group] {
-        cursor: pointer;
-    }
-
-    .admin-toast {
-        position: fixed;
-        right: 24px;
-        bottom: 24px;
-        z-index: 1080;
-        max-width: 360px;
-        padding: 12px 18px;
-        border-radius: 10px;
-        background-color: #212529;
-        color: #ffffff;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(10px);
-        transition: 0.2s ease;
-    }
-
-    .admin-toast.show {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-    }
-
-    @media (max-width: 576px) {
-        .admin-panel,
-        .admin-info-card {
-            padding: 18px;
-        }
-
-        .group-button {
-            flex: 1 1 140px;
-        }
-    }
-</style>
-
+{% block scripts %}
 <script src="{% static 'js/get_admin_users_rating_by_group.js' %}"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const groupButtonsContainer = document.getElementById("groupButtons");
-
-        let activeGroup = "";
-
-        const selectedGroupText = document.getElementById('selectedGroupText');
-        const selectedGroupBadge = document.getElementById('selectedGroupBadge');
-        const ratingSection = document.getElementById('ratingSection');
-        const pendingButton = document.getElementById('pendingAchievementsButton');
-        const saveButton = document.getElementById('saveWeightsButton');
-        const toast = document.getElementById('adminToast');
-        const table = document.getElementById('adminRatingTable');
-        let toastTimer = null;
-
-        function getGroupButtons() {
-            return Array.from(
-                groupButtonsContainer.querySelectorAll(".group-button"),
-            );
-        }
-
-        function showToast(message) {
-            toast.textContent = message;
-            toast.classList.add('show');
-            window.clearTimeout(toastTimer);
-            toastTimer = window.setTimeout(function () {
-                toast.classList.remove('show');
-            }, 2200);
-        }
-
-        function filterRowsByGroup(groupName) {
-            const rows = document.querySelectorAll('#grades_table_body tr[data-group]');
-
-            rows.forEach(function (row) {
-                row.hidden = row.dataset.group !== groupName;
-            });
-        }
-
-        function selectGroup(button) {
-            const groupButtons = getGroupButtons()
-
-            groupButtons.forEach(function (item) {
-                item.classList.remove('active');
-                item.setAttribute('aria-pressed', 'false');
-            });
-
-            button.classList.add('active');
-            button.setAttribute('aria-pressed', 'true');
-
-            activeGroup = button.dataset.group;
-
-            selectedGroupText.textContent = activeGroup;
-            selectedGroupBadge.textContent = activeGroup;
-
-            filterRowsByGroup(activeGroup);
-
-            window.history.replaceState(null, '', '?group=' + encodeURIComponent(activeGroup));
-
-            document.dispatchEvent(new CustomEvent('rating:group-change', {
-                detail: { group: activeGroup }
-            }));
-        }
-
-        function initializeGroupSelection() {
-            const groupButtons = getGroupButtons();
-
-            if (groupButtons.length === 0) {
-                return;
-            }
-
-            const queryGroup = new URLSearchParams(
-                window.location.search,
-            ).get("group");
-
-            const initialButton =
-                groupButtons.find(function (button) {
-                    return button.dataset.group === queryGroup;
-                }) ||
-                groupButtons.find(function (button) {
-                    return button.classList.contains("active");
-                }) ||
-                groupButtons[0];
-
-            if (initialButton) {
-                selectGroup(initialButton);
-            }
-        }
-
-        groupButtonsContainer.addEventListener(
-            "click",
-            function (event) {
-                const button = event.target.closest(".group-button");
-
-                if (!button) {
-                    return;
-                }
-
-                selectGroup(button);
-
-                showToast(
-                    "Выбрана группа: " + button.dataset.group,
-                );
-            },
-        );
-
-        document.addEventListener(
-            "groups:loaded",
-            function () {
-                initializeGroupSelection();
-            },
-        );
-
-        initializeGroupSelection();
-
-        pendingButton.addEventListener('click', function () {
-            ratingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            showToast('Открыт список студентов и достижений для проверки');
-
-            document.dispatchEvent(new CustomEvent('rating:pending-open'));
-        });
-
-        saveButton.addEventListener('click', function () {
-            const weights = {
-                academic: Number(document.getElementById('academicWeight').value),
-                science: Number(document.getElementById('scienceWeight').value),
-                social: Number(document.getElementById('socialWeight').value),
-                cultural: Number(document.getElementById('culturalWeight').value)
-            };
-
-            const values = Object.values(weights);
-            const invalidValue = values.some(function (value) {
-                return !Number.isFinite(value) || value < 0;
-            });
-
-            if (invalidValue) {
-                showToast('Вес должен быть числом не меньше нуля');
-                return;
-            }
-
-            localStorage.setItem('ratingAdminWeights', JSON.stringify(weights));
-            saveButton.textContent = 'Сохранено';
-            saveButton.classList.remove('btn-primary');
-            saveButton.classList.add('btn-success');
-            showToast('Веса категорий сохранены');
-
-            document.dispatchEvent(new CustomEvent('rating:weights-save', {
-                detail: {
-                    group: activeGroup,
-                    weights: weights
-                }
-            }));
-
-            window.setTimeout(function () {
-                saveButton.textContent = 'Сохранить';
-                saveButton.classList.remove('btn-success');
-                saveButton.classList.add('btn-primary');
-            }, 1800);
-        });
-
-        const savedWeights = localStorage.getItem('ratingAdminWeights');
-        if (savedWeights) {
-            try {
-                const weights = JSON.parse(savedWeights);
-                document.getElementById('academicWeight').value = weights.academic;
-                document.getElementById('scienceWeight').value = weights.science;
-                document.getElementById('socialWeight').value = weights.social;
-                document.getElementById('culturalWeight').value = weights.cultural;
-            } catch (error) {
-                localStorage.removeItem('ratingAdminWeights');
-            }
-        }
-
-        table.querySelectorAll('thead th.sortable').forEach(function (header) {
-            let ascending = true;
-
-            header.addEventListener('click', function () {
-                const columnIndex = Number(header.dataset.column);
-                const tbody = table.querySelector('tbody');
-                const rows = Array.from(tbody.querySelectorAll('tr')).filter(function (row) {
-                    return row.cells.length > columnIndex && !row.querySelector('td[colspan]');
-                });
-
-                rows.sort(function (firstRow, secondRow) {
-                    const firstValue = firstRow.cells[columnIndex].textContent.trim();
-                    const secondValue = secondRow.cells[columnIndex].textContent.trim();
-                    const firstNumber = Number(firstValue.replace(',', '.'));
-                    const secondNumber = Number(secondValue.replace(',', '.'));
-
-                    if (Number.isFinite(firstNumber) && Number.isFinite(secondNumber)) {
-                        return ascending ? firstNumber - secondNumber : secondNumber - firstNumber;
-                    }
-
-                    return ascending
-                        ? firstValue.localeCompare(secondValue, 'ru')
-                        : secondValue.localeCompare(firstValue, 'ru');
-                });
-
-                rows.forEach(function (row) {
-                    tbody.appendChild(row);
-                });
-
-                ascending = !ascending;
-            });
-        });
-    });
-</script>
+<script src="{% static 'js/admin_interface.js' %}"></script>
 {% endblock %}

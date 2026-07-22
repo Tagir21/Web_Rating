@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
     const login = window.currentUserLogin
     try {
-        const response = await fetch(`http://127.0.0.1:8000/get_api_user_data/${encodeURIComponent(login)}`);
+        const response = await fetch(`${window.API_BASE_URL}/get_api_user_data/${encodeURIComponent(login)}`);
         const data = await response.json();
 
         document.getElementById("user_fio").textContent = data.user_fio || "Нет данных";

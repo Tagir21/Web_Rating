@@ -32,7 +32,7 @@ class AchievementFileSchema(BaseModel):
 class AchievementAddSchema(BaseModel):
     user_tg_id: int
     status: str
-    category_id: int
+    category_id: List[int]
     grade: float
     description: Optional[str] = None
     file_info: AchievementFileSchema

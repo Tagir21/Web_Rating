@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", async () => {
     const groupId = window.currentUserGroup
     try {
-        const response = await fetch(`http://127.0.0.1:8000/get_api_users_rating_by_group/${encodeURIComponent(groupId)}`);
+        const response = await fetch(`${window.API_BASE_URL}/get_api_users_rating_by_group/${encodeURIComponent(groupId)}`);
         const data = await response.json();
 
         const table_body = document.getElementById('grades_table_body');
@@ -13,11 +13,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                     <tr>
                         <th scope="row">${index + 1}</th>
                         <td><strong>${user.user_name}</strong></td>
-                        <td>${user.grade_group_by_activity.study_activity}</td>
-                        <td>${user.grade_group_by_activity.science_activity}</td>
-                        <td>${user.grade_group_by_activity.social_activity}</td>
-                        <td>${user.grade_group_by_activity.culture_activity}</td>
-                        <td><strong>${user.grade_group_by_activity.general_rating}</strong></td>
+                        <td>${user.weighted_grade_group_by_activity.study_activity}</td>
+                        <td>${user.weighted_grade_group_by_activity.science_activity}</td>
+                        <td>${user.weighted_grade_group_by_activity.social_activity}</td>
+                        <td>${user.weighted_grade_group_by_activity.culture_activity}</td>
+                        <td><strong>${user.weighted_grade_group_by_activity.general_weighted_rating}</strong></td>
                     </tr>
                 `;
             });
