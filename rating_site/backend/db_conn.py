@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.engine import URL
 
 from rating_site.backend.db_models import Base
 from rating_site.backend.db_create import create_database
@@ -13,7 +14,17 @@ from rating_site.env_loader import (
     db_port,
 )
 
-engine = create_async_engine(f'mysql+asyncmy://{db_username}:{db_password}@{db_hostname}:{db_port}/{db_name}')
+database_url = URL.create(
+    drivername="mysql+asyncmy",
+    username=db_username,
+    password=db_password,
+    host=db_hostname,
+    port=int(db_port),
+    database=db_name,
+    query={"charset": "utf8mb4",},
+)
+
+engine = create_async_engine(database_url, pool_pre_ping=True)
 
 new_session = async_sessionmaker(engine, expire_on_commit=False)
 

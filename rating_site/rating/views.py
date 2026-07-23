@@ -77,7 +77,7 @@ def add_achievement(request):
 
         try:
             response = requests.post(
-                f'{settings.API_BASE_URL.rstrip('/')}/post_api_add_web_achievement',
+                f'{settings.INTERNAL_API_BASE_URL}/post_api_add_web_achievement',
                 json=payload,
                 timeout=10
             )

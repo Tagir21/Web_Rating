@@ -14,8 +14,9 @@ from pathlib import Path
 import os
 
 from rating_site.env_loader import (
-    secret_key,
     api_base_url,
+    internal_api_base_url,
+    secret_key,
     db_hostname,
     db_username,
     db_password,
@@ -29,11 +30,22 @@ BASE_DIR = Path(__file__).resolve().parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = secret_key
 API_BASE_URL = api_base_url
+INTERNAL_API_BASE_URL = internal_api_base_url
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,web').split(',')
+    if host.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', 'http://127.0.01,http://localhost:8001').split(',')
+    if origin.strip()
+]
 
 AUTH_USER_MODEL = 'rating.CustomUser'
 AUTHENTICATION_BACKENDS = [
@@ -85,11 +97,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'rating_site.rating_site.wsgi.application'
 
-# Database ТОЛЬКО ДЛЯ ЛОКАЛЬНОЙ БД
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.getenv('SQLITE_PATH', str(BASE_DIR / 'db.sqlite3')),
     },
     'mysql_db': {
         'ENGINE': 'django.db.backends.mysql',
@@ -98,6 +109,9 @@ DATABASES = {
         'PASSWORD': f'{db_password}',
         'HOST': f'{db_hostname}',
         'PORT': f'{db_port}',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        }
     }
 }
 
@@ -134,6 +148,12 @@ STATICFILES_DIRS = [
 
 # Media files (загруженные файлы)
 MEDIA_URL = '/data/'
-MEDIA_ROOT = BASE_DIR.parent / 'data'
+MEDIA_ROOT = Path(
+    os.getenv('MEDIA_ROOT', str(BASE_DIR.parent / 'data'))
+)
+
+STATIC_ROOT = Path(
+    os.getenv('STATIC_ROOT', str(BASE_DIR.parent / 'static'))
+)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

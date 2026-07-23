@@ -19,12 +19,15 @@ from rating_site.backend.schems import (
     WebAchievementAddSchema,
 )
 
+from rating_site.env_loader import cors_origins
+
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8001"],
-    allow_methods=["GET", "POST"],
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -80,8 +83,6 @@ async def post_api_add_web_achievement(data: WebAchievementAddSchema):
 
     return result
 
-@app.get('/test')
-async def test():
-    result = await get_category_data()
-
-    return  result
+@app.get('/health')
+async def health():
+    return {'status': 'ok'}
